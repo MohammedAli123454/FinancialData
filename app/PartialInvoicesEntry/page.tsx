@@ -1,17 +1,16 @@
 "use client";
 import { useState, useTransition, useEffect, useCallback } from "react";
 import DatePicker from "react-datepicker";
-import { Calendar } from "@/components/ui/calendar"
+import { Calendar } from "@/components/ui/calendar";
 import "react-datepicker/dist/react-datepicker.css";
 
 import {
   addPartialInvoice,
   updatePartialInvoice,
-  deletePartialInvoice
+  deletePartialInvoice,
 } from "../actions/invoiceActions";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,18 +19,18 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
 } from "@/components/ui/select";
 import { db } from "../config/db";
 import { mocs, partialInvoices } from "../config/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -43,16 +42,9 @@ import {
 } from "@/components/ui/table";
 import { Edit, Trash2, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-
-
 // Interfaces
-interface PartialInvoiceFormProps {
-  onInvoiceAdded?: () => void;
-}
-
 interface MocOption {
   id: number;
   mocNo: string;
@@ -110,9 +102,7 @@ const SkeletonRow = () => (
   </TableRow>
 );
 
-export default function PartialInvoicesEntry({
-  onInvoiceAdded = () => { }
-}: PartialInvoiceFormProps) {
+export default function PartialInvoicesEntry() {
   // State Management
   const [searchQuery, setSearchQuery] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -125,10 +115,8 @@ export default function PartialInvoicesEntry({
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
-
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [startDate, endDate] = dateRange;
-
 
   // Form State
   const [formData, setFormData] = useState({
@@ -147,27 +135,31 @@ export default function PartialInvoicesEntry({
       try {
         const [mocsResult, invoicesResult] = await Promise.all([
           db.select().from(mocs),
-          db.select().from(partialInvoices)
+          db.select().from(partialInvoices),
         ]);
 
-        setMocOptions(mocsResult.map(moc => ({
-          id: moc.id,
-          mocNo: moc.mocNo,
-          cwo: moc.cwo,
-        })));
+        setMocOptions(
+          mocsResult.map((moc) => ({
+            id: moc.id,
+            mocNo: moc.mocNo,
+            cwo: moc.cwo,
+          }))
+        );
 
-        const sortedInvoices = invoicesResult.map(invoice => {
-          const moc = mocsResult.find(m => m.id === invoice.mocId);
-          return {
-            ...invoice,
-            mocId: invoice.mocId,
-            invoiceDate: invoice.invoiceDate,
-            amount: parseFloat(invoice.amount),
-            vat: parseFloat(invoice.vat),
-            retention: parseFloat(invoice.retention),
-            mocNo: moc?.mocNo || "",
-          };
-        }).sort((a, b) => a.mocNo.localeCompare(b.mocNo));
+        const sortedInvoices = invoicesResult
+          .map((invoice) => {
+            const moc = mocsResult.find((m) => m.id === invoice.mocId);
+            return {
+              ...invoice,
+              mocId: invoice.mocId,
+              invoiceDate: invoice.invoiceDate,
+              amount: parseFloat(invoice.amount),
+              vat: parseFloat(invoice.vat),
+              retention: parseFloat(invoice.retention),
+              mocNo: moc?.mocNo || "",
+            };
+          })
+          .sort((a, b) => a.mocNo.localeCompare(b.mocNo));
 
         setInvoices(sortedInvoices);
       } catch (error) {
@@ -184,7 +176,7 @@ export default function PartialInvoicesEntry({
   // Business Logic
   const calculateValues = useCallback((amount: number) => ({
     vat: amount * 0.15,
-    retention: amount * 0.10,
+    retention: amount * 0.1,
   }), []);
 
   const handleAmountChange = (value: string) => {
@@ -207,7 +199,6 @@ export default function PartialInvoicesEntry({
         const moc = mocOptions.find((m) => m.id.toString() === mocId);
         if (!moc) return;
 
-        // Fetch existing invoice numbers for this MOC
         const existingInvoices = await db
           .select({ invoiceNo: partialInvoices.invoiceNo })
           .from(partialInvoices)
@@ -223,7 +214,7 @@ export default function PartialInvoicesEntry({
         });
 
         const nextNumber = maxNumber + 1;
-        const paddedNumber = nextNumber.toString().padStart(3, '0');
+        const paddedNumber = nextNumber.toString().padStart(3, "0");
         const newInvoiceNo = `${moc.cwo} INV-C-${paddedNumber}`;
 
         setFormData((prev) => ({ ...prev, invoiceNo: newInvoiceNo }));
@@ -258,7 +249,6 @@ export default function PartialInvoicesEntry({
 
         refreshInvoices();
         resetForm();
-        onInvoiceAdded();
       } catch (error) {
         console.error("Form submission error:", error);
         showDialog("Error", "An error occurred. Please try again.");
@@ -323,20 +313,19 @@ export default function PartialInvoicesEntry({
           amount: partialInvoices.amount,
           vat: partialInvoices.vat,
           retention: partialInvoices.retention,
-          invoiceStatus: partialInvoices.invoiceStatus, // Ensure this is selected
-          mocNo: mocs.mocNo
+          invoiceStatus: partialInvoices.invoiceStatus,
+          mocNo: mocs.mocNo,
         })
         .from(partialInvoices)
         .leftJoin(mocs, eq(partialInvoices.mocId, mocs.id));
 
-      const updatedInvoices = result.map(row => ({
+      const updatedInvoices = result.map((row) => ({
         ...row,
         mocNo: row.mocNo || "",
         amount: parseFloat(row.amount),
         vat: parseFloat(row.vat),
         retention: parseFloat(row.retention),
-        // Ensure status is properly formatted
-        invoiceStatus: row.invoiceStatus.trim().toUpperCase()
+        invoiceStatus: row.invoiceStatus.trim().toUpperCase(),
       }));
 
       setInvoices(updatedInvoices);
@@ -345,21 +334,17 @@ export default function PartialInvoicesEntry({
     }
   };
 
-  // Add filtered invoices
-  const filteredInvoices = invoices.filter(invoice => {
+  const filteredInvoices = invoices.filter((invoice) => {
     const searchLower = searchQuery.toLowerCase();
     const invoiceDate = invoice.invoiceDate ? new Date(invoice.invoiceDate) : null;
+    const dateInRange = !startDate || !endDate || !invoiceDate
+      ? true
+      : invoiceDate >= startDate && invoiceDate <= endDate;
 
-    // Date range filter
-    const dateInRange = !startDate || !endDate || !invoiceDate ? true :
-      invoiceDate >= startDate && invoiceDate <= endDate;
-
-    // Existing search filter
-    const matchesSearch = (
+    const matchesSearch =
       invoice.invoiceNo?.toLowerCase().includes(searchLower) ||
       invoice.mocNo?.toLowerCase().includes(searchLower) ||
-      invoice.invoiceDate?.toLowerCase().includes(searchLower)
-    );
+      invoice.invoiceDate?.toLowerCase().includes(searchLower);
 
     return dateInRange && matchesSearch;
   });
@@ -377,7 +362,6 @@ export default function PartialInvoicesEntry({
     setEditId(null);
   };
 
-  // Effect Hooks
   useEffect(() => {
     if (formData.mocId) {
       generateInvoiceNumber(formData.mocId);
@@ -392,7 +376,6 @@ export default function PartialInvoicesEntry({
             {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
           </h3>
 
-          {/* Invoice Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
