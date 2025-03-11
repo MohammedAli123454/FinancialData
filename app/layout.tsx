@@ -28,16 +28,17 @@ export default function RootLayout({ children }: LayoutProps) {
         <div style={{ display: 'flex' }}>
           <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
           <QueryProvider>
-            <main
-              style={{
-                flex: 1,
-                padding: '1rem',
-                transition: 'margin 0.3s',
-                marginLeft: sidebarOpen ? '16rem' : '4rem', // 16rem = 256px (w-64), 4rem accounts for toggle button
-              }}
-            >
-              {children}
-            </main>
+          <main
+  style={{
+    flex: 1,
+    padding: '1rem',
+    transition: 'width 0.3s, margin-left 0.3s',
+    marginLeft: sidebarOpen ? '16rem' : '0',
+    width: sidebarOpen ? 'calc(100% - 16rem)' : '100%',
+  }}
+>
+  {children}
+</main>
           </QueryProvider>
         </div>
       </body>

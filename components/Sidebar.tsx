@@ -43,12 +43,12 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
         onClick={toggleSidebar}
         className="fixed top-0 left-4 z-50 p-2 hover:text-gray-700 transition-all"
       >
-        {isOpen ? <LuPanelLeftClose size={30} /> : <LuPanelRightClose size={30} />}
+        {isOpen ? <LuPanelLeftClose size={25} /> : <LuPanelRightClose size={25} />}
       </button>
 
       {/* Sidebar Container */}
       <div
-        className={`bg-gray-100 h-screen shadow-md p-2 overflow-y-auto transition-all duration-300 
+        className={`bg-gray-100 h-screen shadow-md p-1 overflow-y-auto transition-all duration-300 
         ${isOpen ? "w-64" : "w-0 overflow-hidden"}
         fixed top-0 left-0`}
       >
@@ -67,9 +67,9 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
                 {section.title}
                 <span>
                   {openSections[section.title] ? (
-                    <FaChevronDown size={14} className="transition-transform" />
+                    <FaChevronDown size={12} className="transition-transform" />
                   ) : (
-                    <FaChevronRight size={14} className="transition-transform" />
+                    <FaChevronRight size={12} className="transition-transform" />
                   )}
                 </span>
               </button>
