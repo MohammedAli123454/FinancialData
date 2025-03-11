@@ -23,7 +23,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
     {
       title: "Invoices Status",
       links: [
-        // { name: "Invoices Status", path: "/InvoicesStatus" },
+         { name: "Invoices Status", path: "/InvoicesStatus" },
         { name: "Partial Invoices Entry", path: "/PartialInvoicesEntry" },
       ],
     },

@@ -687,3 +687,10 @@
 //     </div>
 //   );
 // }
+
+export default function InvoicesStatus() {
+
+  return (
+<div>Mohd</div>
+  );
+}
