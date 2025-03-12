@@ -22,6 +22,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { getGroupedMOCs, PartialInvoices } from "@/app/actions/invoiceActions";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell, // Add this import
+  LabelList // Add this if missing
+} from "recharts";
 
 // Utility Functions
 const formatMillions = (value: number) => {
@@ -681,6 +692,133 @@ export default function InvoicesStatus() {
                 </CardContent>
               </Card>
             </div>
+            {/* Added Calculations and Visualization */}
+{selectedMoc && (() => {
+  const contractValue = selectedMoc.contractValue || 0;
+  const totalInvoicesSubmitted = selectedMoc.invoices.reduce((sum, inv) => sum + inv.amount, 0);
+  const totalPaymentReceived = selectedMoc.invoices
+    .filter(inv => inv.invoiceStatus === "PAID")
+    .reduce((sum, inv) => sum + inv.amount, 0);
+  const retentionValue = selectedMoc.invoices
+    .filter(inv => inv.invoiceStatus === "PAID")
+    .reduce((sum, inv) => sum + (inv.amount + inv.vat) * 0.1, 0);
+  const submittedPercentage = contractValue 
+    ? (totalInvoicesSubmitted / contractValue) * 100 
+    : 0;
+
+  const chartData = [
+    { name: 'Contract Value', value: contractValue },
+    { name: 'Invoices Submitted', value: totalInvoicesSubmitted },
+    { name: 'Payment Received', value: totalPaymentReceived },
+    { name: 'Retention Value', value: retentionValue },
+  ];
+
+  return (
+    <div className="mt-6 space-y-6">
+      {/* Bar Chart */}
+      <div className="bg-white p-4 rounded-lg shadow">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 py-4 px-6 rounded-t-xl border-b border-blue-200 shadow-sm mb-6">
+  <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-700 text-center tracking-wide drop-shadow-sm">
+    Contractual Payment Performance Breakdown
+  </h3>
+</div>
+        <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+  <BarChart 
+    data={chartData} 
+    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+  >
+    {/* Remove CartesianGrid to eliminate grid lines */}
+    <XAxis 
+      dataKey="name" 
+      tick={{ fill: '#6b7280' }} 
+    />
+    <YAxis
+      tickFormatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
+      tick={{ fill: '#6b7280' }}
+    />
+    <Tooltip
+      formatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
+      contentStyle={{ backgroundColor: '#ffffff', border: 'none' }}
+    />
+    <Legend />
+    <Bar
+      dataKey="value"
+      name="Value (SR)"
+      barSize={60} // Reduced bar width
+      fill="#4f46e5" // Base color (will be overridden by individual colors)
+    >
+      {/* Custom colors for each bar with labels */}
+      {chartData.map((entry, index) => (
+        <Cell
+          key={`cell-${index}`}
+          fill={[
+            '#2563eb',  // Blue-600
+            '#16a34a',  // Green-600
+            '#9333ea',  // Purple-600
+            '#ea580c'   // Orange-600
+          ][index % 4]}
+        />
+      ))}
+      
+      {/* Center-aligned labels */}
+      <LabelList 
+        dataKey="value"
+        position="center"
+        fill="#ffffff"
+        formatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
+      />
+    </Bar>
+  </BarChart>
+</ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Progress Bars */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="p-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Invoices Submitted ({submittedPercentage.toFixed(1)}%)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative h-8 bg-gray-200 rounded-full">
+              <div
+                className="absolute h-full bg-blue-600 rounded-full transition-all duration-500"
+                style={{ width: `${submittedPercentage}%` }}
+              >
+                <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-medium">
+                  {submittedPercentage.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="p-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">
+              Remaining ({(100 - submittedPercentage).toFixed(1)}%)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative h-8 bg-gray-200 rounded-full">
+              <div
+                className="absolute h-full bg-gray-600 rounded-full transition-all duration-500"
+                style={{ width: `${100 - submittedPercentage}%` }}
+              >
+                <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-medium">
+                  {(100 - submittedPercentage).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+})()}
           </div>
         </DialogContent>
       </Dialog>
