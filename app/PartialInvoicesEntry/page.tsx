@@ -362,11 +362,13 @@ export default function PartialInvoicesEntry() {
     setEditId(null);
   };
 
-  useEffect(() => {
-    if (formData.mocId) {
-      generateInvoiceNumber(formData.mocId);
-    }
-  }, [formData.mocId, generateInvoiceNumber]);
+// Update the useEffect that generates invoice numbers
+useEffect(() => {
+  // Only generate invoice number when not in edit mode
+  if (formData.mocId && !editId) {
+    generateInvoiceNumber(formData.mocId);
+  }
+}, [formData.mocId, generateInvoiceNumber, editId]); // Add editId to dependencies
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
