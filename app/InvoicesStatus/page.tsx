@@ -89,7 +89,7 @@ const MergedCard: React.FC<MergedCardProps> = ({
   return (
     <Card
       onClick={onClick}
-      className={`p-1 cursor-pointer transition-all ${isSelected ? "border-2 border-blue-500" : "hover:border-gray-300"
+      className={`p-0 cursor-pointer transition-all ${isSelected ? "border-2 border-blue-500" : "hover:border-gray-300"
         }`}
     >
       <CardHeader className="pb-2">
@@ -166,7 +166,7 @@ export default function InvoicesStatus() {
 
   // Status Mapping for Invoice Statuses
   const statusMapping = {
-    PAID: { label: "Total Received Payment", color: "text-green-600" },
+    PAID: { label: "Total Amount Collected", color: "text-green-600" },
     FINANCE: { label: "Invoices Under Finance", color: "text-purple-600" },
     PMD: { label: "Invoices Under Supply Chain", color: "text-orange-600" },
     PMT: { label: "Invoices Under PMT", color: "text-blue-600" },
@@ -195,10 +195,24 @@ export default function InvoicesStatus() {
       (sum, moc) => sum + safeNumber(moc.contractValue),
       0
     ),
+    totalSubmittedInvoicesWithoutVAL: allInvoicesForAggregation.reduce(
+      (sum, row) =>
+        sum +
+    (row?.amount ?? 0),
+      0
+    ),
     totalSubmittedInvoicesWithVATMinusRetention: allInvoicesForAggregation.reduce(
       (sum, row) =>
         sum +
         ((row?.amount ?? 0) + (row?.vat ?? 0) - (row?.retention ?? 0)),
+      0
+    ),
+    totalPaidInvoicesExcludingVATAndRetention: allInvoicesForAggregation
+    .filter((row) => row?.invoiceStatus === "PAID")
+    .reduce(
+      (sum, row) =>
+        sum +
+        ((row?.amount ?? 0) - (row?.retention ?? 0)),
       0
     ),
     totalPaidInvoicesWithVATMinusRetention: allInvoicesForAggregation
@@ -292,12 +306,12 @@ export default function InvoicesStatus() {
       {/* Merged Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-8">
         <MergedCard
-          title="Contract Value Summary"
-          leftLabel="Awarded Contract Value"
+          title="Value Excluding VAT(SR)"
+          leftLabel="Awarded PO Value"
           leftValue={aggregatedSums.totalAwardedAmountExcludingVAT}
-          rightLabel="Total Invoices Submitted"
+          rightLabel="Invoices Submitted Value"
           rightValue={
-            aggregatedSums.totalSubmittedInvoicesWithVATMinusRetention
+            aggregatedSums.totalSubmittedInvoicesWithoutVAL
           }
           onClick={() =>
             setSelectedCard((prev) =>
@@ -308,9 +322,9 @@ export default function InvoicesStatus() {
           showInMillions={showInMillions}
         />
         <MergedCard
-          title="Collection Summary"
+          title="Collection Exc. VAT & Retention(SR)"
           leftLabel={statusMapping.PAID.label}
-          leftValue={aggregatedSums.totalPaidInvoicesWithVATMinusRetention}
+          leftValue={aggregatedSums.totalPaidInvoicesExcludingVATAndRetention}
           rightLabel="Coll. % vs Submitted Inv."
           rightValue={paymentPercentage}
           leftColor={statusMapping.PAID.color}
@@ -324,7 +338,7 @@ export default function InvoicesStatus() {
           showInMillions={showInMillions} // Add this line
         />
         <MergedCard
-          title="Invoices to Finance & SC"
+          title="Invoices to Finance & SC(SR)"
           leftLabel={statusMapping.FINANCE.label}
           leftValue={aggregatedSums.invoicesUnderFinanceWithVATMinusRetention}
           rightLabel={statusMapping.PMD.label}
@@ -340,7 +354,7 @@ export default function InvoicesStatus() {
           showInMillions={showInMillions}
         />
         <MergedCard
-          title="Invoices Under PMT Review"
+          title="Invoices Under PMT Review(SR)"
           leftLabel={statusMapping.PMT.label}
           leftValue={aggregatedSums.invoicesUnderPMTWithVATMinusRetention}
           rightLabel="Retention Value"
