@@ -8,6 +8,8 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch"
+
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -35,9 +37,12 @@ import {
 } from "recharts";
 
 // Utility Functions
-const formatMillions = (value: number) => {
-  const millions = value / 1_000_000;
-  return `${millions.toLocaleString("en-US", { maximumFractionDigits: 1 })}M`;
+const formatMillions = (value: number, showInMillions: boolean) => {
+  if (showInMillions) {
+    const millions = value / 1_000_000;
+    return `${millions.toLocaleString("en-US", { maximumFractionDigits: 2 })}M`;
+  }
+  return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
 };
 
 const safeString = (value: string | null) => value || "N/A";
@@ -55,6 +60,7 @@ type MergedCardProps = {
   onClick: () => void;
   isSelected: boolean;
   rightIsPercentage?: boolean;
+  showInMillions: boolean;
 };
 
 const MergedCard: React.FC<MergedCardProps> = ({
@@ -68,53 +74,56 @@ const MergedCard: React.FC<MergedCardProps> = ({
   onClick,
   isSelected,
   rightIsPercentage = false,
+  showInMillions,
 }) => {
-  const formatValue = (value: number, isPercentage: boolean) =>
-    isPercentage
-      ? value.toLocaleString("en-US", {
-          style: "percent",
-          minimumFractionDigits: 1,
-        })
-      : formatMillions(value);
+  const formatValue = (value: number, isPercentage: boolean) => {
+    if (isPercentage) {
+      return value.toLocaleString("en-US", {
+        style: "percent",
+        minimumFractionDigits: 1,
+      });
+    }
+    return formatMillions(value, showInMillions);
+  };
 
   return (
     <Card
-    onClick={onClick}
-    className={`cursor-pointer transition-all ${isSelected ? "border-2 border-blue-500" : "hover:border-gray-300"
-      }`}
-  >
-    <CardHeader className="pb-2">
-      <CardTitle
-        className={`text-center text-[15px] font-medium text-blue-900/90 py-1.5 px-3.5
+      onClick={onClick}
+      className={`p-1 cursor-pointer transition-all ${isSelected ? "border-2 border-blue-500" : "hover:border-gray-300"
+        }`}
+    >
+      <CardHeader className="pb-2">
+        <CardTitle
+          className={`text-center text-[15px] font-medium text-blue-900/90 py-1.5 px-3.5
         border-b border-blue-200/30 bg-gradient-to-r from-blue-100/70 to-blue-100/30
         backdrop-blur-sm rounded-t-xl transition-all duration-300 ${isSelected
-            ? "bg-blue-100/50 border-b-blue-300/30"
-            : "hover:bg-blue-100/40"
-          }`}
-      >
-        {title}
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {/* Left Metric Row */}
-        <div className="grid grid-cols-5 items-center gap-x-1">
-          <span className="col-span-4 text-sm text-gray-600 truncate">{leftLabel}</span>
-          <span className={`col-span-1 text-xl font-normal ${leftColor} text-right`}>
-            {formatValue(leftValue, false)}
-          </span>
-        </div>
+              ? "bg-blue-100/50 border-b-blue-300/30"
+              : "hover:bg-blue-100/40"
+            }`}
+        >
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Left Metric Row */}
+          <div className="grid grid-cols-5 items-center gap-x-1">
+            <span className="col-span-3 text-sm text-gray-600 truncate">{leftLabel}</span>
+            <span className={`col-span-2 text-xl font-normal ${leftColor} text-right`}>
+              {formatValue(leftValue, false)}
+            </span>
+          </div>
 
-        {/* Right Metric Row */}
-        <div className="grid grid-cols-5 items-center gap-x-1">
-          <span className="col-span-4 text-sm text-gray-600 truncate">{rightLabel}</span>
-          <span className={`col-span-1 text-xl font-normal ${rightColor} text-right`}>
-            {formatValue(rightValue, rightIsPercentage)}
-          </span>
+          {/* Right Metric Row */}
+          <div className="grid grid-cols-5 items-center gap-x-1">
+            <span className="col-span-3 text-sm text-gray-600 truncate">{rightLabel}</span>
+            <span className={`col-span-2 text-xl font-normal ${rightColor} text-right`}>
+              {formatValue(rightValue, rightIsPercentage)}
+            </span>
+          </div>
         </div>
-      </div>
-    </CardContent>
-  </Card>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -122,9 +131,9 @@ export default function InvoicesStatus() {
   const [selectedCard, setSelectedCard] = useState<string | null>("awarded");
   const [selectedType, setSelectedType] = useState<string>("Overall");
   const [selectedMoc, setSelectedMoc] = useState<PartialInvoices | null>(null);
-
-   // Fetch Data Using TanStack Query
-   const {
+  const [showInMillions, setShowInMillions] = useState(true); // Add this state
+  // Fetch Data Using TanStack Query
+  const {
     data: groupedMOCs,
     isLoading,
     isError,
@@ -240,8 +249,8 @@ export default function InvoicesStatus() {
       ...moc,
       invoices: Object.keys(statusMapping).includes(selectedCard || "")
         ? (moc.invoices ?? []).filter(
-            (invoice) => invoice.invoiceStatus === selectedCard
-          )
+          (invoice) => invoice.invoiceStatus === selectedCard
+        )
         : moc.invoices ?? [],
     }))
     .filter((moc) => (moc.invoices ?? []).length > 0);
@@ -249,7 +258,18 @@ export default function InvoicesStatus() {
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       {/* Dropdown Menu */}
-      <div className="mb-4 flex justify-end">
+      {/* <div className="mb-4 flex justify-end"> */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={showInMillions}
+            onCheckedChange={setShowInMillions}
+            id="show-millions"
+          />
+          <label htmlFor="show-millions" className="text-sm text-gray-600">
+            Show in millions
+          </label>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -271,7 +291,7 @@ export default function InvoicesStatus() {
 
       {/* Merged Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-8">
-      <MergedCard
+        <MergedCard
           title="Contract Value Summary"
           leftLabel="Awarded Contract Value"
           leftValue={aggregatedSums.totalAwardedAmountExcludingVAT}
@@ -285,6 +305,7 @@ export default function InvoicesStatus() {
             )
           }
           isSelected={selectedCard === "awarded" || selectedCard === "submitted"}
+          showInMillions={showInMillions}
         />
         <MergedCard
           title="Collection Summary"
@@ -300,6 +321,7 @@ export default function InvoicesStatus() {
             )
           }
           isSelected={selectedCard === "PAID" || selectedCard === "percentage"}
+          showInMillions={showInMillions} // Add this line
         />
         <MergedCard
           title="Invoices to Finance & SC"
@@ -315,6 +337,7 @@ export default function InvoicesStatus() {
             )
           }
           isSelected={selectedCard === "FINANCE" || selectedCard === "PMT"}
+          showInMillions={showInMillions}
         />
         <MergedCard
           title="Invoices Under PMT Review"
@@ -330,6 +353,7 @@ export default function InvoicesStatus() {
             )
           }
           isSelected={selectedCard === "PMD" || selectedCard === "retention"}
+          showInMillions={showInMillions}
         />
       </div>
 
@@ -417,19 +441,19 @@ export default function InvoicesStatus() {
                       {safeString(moc.cwo)}
                     </td>
                     <td className="px-3 py-3 text-sm text-gray-900 text-center font-mono">
-                      {formatMillions(awardedValue)}
+                      {formatMillions(awardedValue, showInMillions)}
                     </td>
                     <td className="px-3 py-3 text-sm text-gray-900 text-center font-mono font-medium">
-                      {formatMillions(awardedValueWithVAT)}
+                      {formatMillions(awardedValueWithVAT, showInMillions)}
                     </td>
                     <td className="px-3 py-3 text-sm text-gray-900 text-center font-mono">
-                      {formatMillions(totalPayable)}
+                      {formatMillions(totalPayable, showInMillions)}
                     </td>
                     <td className="px-3 py-3 text-sm text-green-600 text-center font-mono font-semibold">
-                      {formatMillions(receivedValue)}
+                      {formatMillions(receivedValue, showInMillions)}
                     </td>
                     <td className="px-3 py-3 text-sm text-gray-900 text-center font-mono">
-                      {formatMillions(balanceAmount)}
+                      {formatMillions(balanceAmount, showInMillions)}
                     </td>
                   </tr>
                 );
@@ -465,9 +489,10 @@ export default function InvoicesStatus() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-mono text-blue-800">
-                    {formatMillions(
+                    {/* {formatMillions(
                       (selectedMoc?.contractValue || 0) * 1.15
-                    )}
+                    )} */}
+                    {formatMillions((selectedMoc?.contractValue || 0) * 1.15, showInMillions)}
                   </div>
                 </CardContent>
               </Card>
@@ -484,7 +509,7 @@ export default function InvoicesStatus() {
                       selectedMoc?.invoices.reduce(
                         (sum, inv) => sum + inv.amount + inv.vat,
                         0
-                      ) || 0
+                      ) || 0, showInMillions
                     )}
                   </div>
                 </CardContent>
@@ -504,7 +529,7 @@ export default function InvoicesStatus() {
                         .reduce(
                           (sum, inv) => sum + inv.amount + inv.vat,
                           0
-                        ) || 0
+                        ) || 0, showInMillions
                     )}
                   </div>
                 </CardContent>
@@ -524,7 +549,7 @@ export default function InvoicesStatus() {
                         .reduce(
                           (sum, inv) => sum + (inv.amount + inv.vat) * 0.1,
                           0
-                        ) || 0
+                        ) || 0, showInMillions
                     )}
                   </div>
                 </CardContent>
@@ -591,16 +616,16 @@ export default function InvoicesStatus() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-sm text-gray-900">
-                          {formatMillions(invoice.amount)}
+                          {formatMillions(invoice.amount, showInMillions)}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-sm text-gray-900">
-                          {formatMillions(invoice.vat)}
+                          {formatMillions(invoice.vat, showInMillions)}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-sm text-red-600">
-                          {formatMillions(retention)}
+                          {formatMillions(retention, showInMillions)}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-green-700">
-                          {formatMillions(netPayable)}
+                          {formatMillions(netPayable, showInMillions)}
                         </td>
                       </tr>
                     );
@@ -619,7 +644,7 @@ export default function InvoicesStatus() {
                         selectedMoc?.invoices.reduce(
                           (sum, inv) => sum + inv.amount,
                           0
-                        ) || 0
+                        ) || 0, showInMillions
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-gray-900">
@@ -627,7 +652,7 @@ export default function InvoicesStatus() {
                         selectedMoc?.invoices.reduce(
                           (sum, inv) => sum + inv.vat,
                           0
-                        ) || 0
+                        ) || 0, showInMillions
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-red-700">
@@ -635,7 +660,7 @@ export default function InvoicesStatus() {
                         selectedMoc?.invoices.reduce(
                           (sum, inv) => sum + (inv.amount + inv.vat) * 0.1,
                           0
-                        ) || 0
+                        ) || 0, showInMillions
                       )}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-sm font-semibold text-green-700">
@@ -647,7 +672,7 @@ export default function InvoicesStatus() {
                               inv.vat -
                               (inv.amount + inv.vat) * 0.1),
                           0
-                        ) || 0
+                        ) || 0, showInMillions
                       )}
                     </td>
                   </tr>
@@ -693,132 +718,132 @@ export default function InvoicesStatus() {
               </Card>
             </div>
             {/* Added Calculations and Visualization */}
-{selectedMoc && (() => {
-  const contractValue = selectedMoc.contractValue || 0;
-  const totalInvoicesSubmitted = selectedMoc.invoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalPaymentReceived = selectedMoc.invoices
-    .filter(inv => inv.invoiceStatus === "PAID")
-    .reduce((sum, inv) => sum + inv.amount, 0);
-  const retentionValue = selectedMoc.invoices
-    .filter(inv => inv.invoiceStatus === "PAID")
-    .reduce((sum, inv) => sum + (inv.amount + inv.vat) * 0.1, 0);
-  const submittedPercentage = contractValue 
-    ? (totalInvoicesSubmitted / contractValue) * 100 
-    : 0;
+            {selectedMoc && (() => {
+              const contractValue = selectedMoc.contractValue || 0;
+              const totalInvoicesSubmitted = selectedMoc.invoices.reduce((sum, inv) => sum + inv.amount, 0);
+              const totalPaymentReceived = selectedMoc.invoices
+                .filter(inv => inv.invoiceStatus === "PAID")
+                .reduce((sum, inv) => sum + inv.amount, 0);
+              const retentionValue = selectedMoc.invoices
+                .filter(inv => inv.invoiceStatus === "PAID")
+                .reduce((sum, inv) => sum + (inv.amount + inv.vat) * 0.1, 0);
+              const submittedPercentage = contractValue
+                ? (totalInvoicesSubmitted / contractValue) * 100
+                : 0;
 
-  const chartData = [
-    { name: 'Contract Value', value: contractValue },
-    { name: 'Invoices Submitted', value: totalInvoicesSubmitted },
-    { name: 'Payment Received', value: totalPaymentReceived },
-    { name: 'Retention Value', value: retentionValue },
-  ];
+              const chartData = [
+                { name: 'Contract Value', value: contractValue },
+                { name: 'Invoices Submitted', value: totalInvoicesSubmitted },
+                { name: 'Payment Received', value: totalPaymentReceived },
+                { name: 'Retention Value', value: retentionValue },
+              ];
 
-  return (
-    <div className="mt-6 space-y-6">
-      {/* Bar Chart */}
-      <div className="bg-white p-4 rounded-lg shadow">
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 py-4 px-6 rounded-t-xl border-b border-blue-200 shadow-sm mb-6">
-  <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-700 text-center tracking-wide drop-shadow-sm">
-    Contractual Payment Performance Breakdown
-  </h3>
-</div>
-        <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-  <BarChart 
-    data={chartData} 
-    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-  >
-    {/* Remove CartesianGrid to eliminate grid lines */}
-    <XAxis 
-      dataKey="name" 
-      tick={{ fill: '#6b7280' }} 
-    />
-    <YAxis
-      tickFormatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
-      tick={{ fill: '#6b7280' }}
-    />
-    <Tooltip
-      formatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
-      contentStyle={{ backgroundColor: '#ffffff', border: 'none' }}
-    />
-    <Legend />
-    <Bar
-      dataKey="value"
-      name="Value (SR)"
-      barSize={60} // Reduced bar width
-      fill="#4f46e5" // Base color (will be overridden by individual colors)
-    >
-      {/* Custom colors for each bar with labels */}
-      {chartData.map((entry, index) => (
-        <Cell
-          key={`cell-${index}`}
-          fill={[
-            '#2563eb',  // Blue-600
-            '#16a34a',  // Green-600
-            '#9333ea',  // Purple-600
-            '#ea580c'   // Orange-600
-          ][index % 4]}
-        />
-      ))}
-      
-      {/* Center-aligned labels */}
-      <LabelList 
-        dataKey="value"
-        position="center"
-        fill="#ffffff"
-        formatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
-      />
-    </Bar>
-  </BarChart>
-</ResponsiveContainer>
-        </div>
-      </div>
+              return (
+                <div className="mt-6 space-y-6">
+                  {/* Bar Chart */}
+                  <div className="bg-white p-4 rounded-lg shadow">
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 py-4 px-6 rounded-t-xl border-b border-blue-200 shadow-sm mb-6">
+                      <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-700 text-center tracking-wide drop-shadow-sm">
+                        Contractual Payment Performance Breakdown
+                      </h3>
+                    </div>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={chartData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                          {/* Remove CartesianGrid to eliminate grid lines */}
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fill: '#6b7280' }}
+                          />
+                          <YAxis
+                            tickFormatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
+                            tick={{ fill: '#6b7280' }}
+                          />
+                          <Tooltip
+                            formatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
+                            contentStyle={{ backgroundColor: '#ffffff', border: 'none' }}
+                          />
+                          <Legend />
+                          <Bar
+                            dataKey="value"
+                            name="Value (SR)"
+                            barSize={60} // Reduced bar width
+                            fill="#4f46e5" // Base color (will be overridden by individual colors)
+                          >
+                            {/* Custom colors for each bar with labels */}
+                            {chartData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={[
+                                  '#2563eb',  // Blue-600
+                                  '#16a34a',  // Green-600
+                                  '#9333ea',  // Purple-600
+                                  '#ea580c'   // Orange-600
+                                ][index % 4]}
+                              />
+                            ))}
 
-      {/* Progress Bars */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-4">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Invoices Submitted ({submittedPercentage.toFixed(1)}%)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative h-8 bg-gray-200 rounded-full">
-              <div
-                className="absolute h-full bg-blue-600 rounded-full transition-all duration-500"
-                style={{ width: `${submittedPercentage}%` }}
-              >
-                <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-medium">
-                  {submittedPercentage.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                            {/* Center-aligned labels */}
+                            <LabelList
+                              dataKey="value"
+                              position="center"
+                              fill="#ffffff"
+                              formatter={(value: number) => `${(value / 1e6).toFixed(1)}M`}
+                            />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
 
-        <Card className="p-4">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Remaining ({(100 - submittedPercentage).toFixed(1)}%)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative h-8 bg-gray-200 rounded-full">
-              <div
-                className="absolute h-full bg-gray-600 rounded-full transition-all duration-500"
-                style={{ width: `${100 - submittedPercentage}%` }}
-              >
-                <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-medium">
-                  {(100 - submittedPercentage).toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-})()}
+                  {/* Progress Bars */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="p-4">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600">
+                          Invoices Submitted ({submittedPercentage.toFixed(1)}%)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="relative h-8 bg-gray-200 rounded-full">
+                          <div
+                            className="absolute h-full bg-blue-600 rounded-full transition-all duration-500"
+                            style={{ width: `${submittedPercentage}%` }}
+                          >
+                            <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-medium">
+                              {submittedPercentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="p-4">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600">
+                          Remaining ({(100 - submittedPercentage).toFixed(1)}%)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="relative h-8 bg-gray-200 rounded-full">
+                          <div
+                            className="absolute h-full bg-gray-600 rounded-full transition-all duration-500"
+                            style={{ width: `${100 - submittedPercentage}%` }}
+                          >
+                            <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-medium">
+                              {(100 - submittedPercentage).toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
