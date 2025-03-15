@@ -132,6 +132,7 @@ export default function InvoicesStatus() {
   const [selectedType, setSelectedType] = useState<string>("Overall");
   const [selectedMoc, setSelectedMoc] = useState<PartialInvoices | null>(null);
   const [showInMillions, setShowInMillions] = useState(true); // Add this state
+  const [showIncludingVAT, setShowIncludingVAT] = useState(true);
   // Fetch Data Using TanStack Query
   const {
     data: groupedMOCs,
@@ -195,10 +196,20 @@ export default function InvoicesStatus() {
       (sum, moc) => sum + safeNumber(moc.contractValue),
       0
     ),
-    totalSubmittedInvoicesWithoutVAL: allInvoicesForAggregation.reduce(
+    totalAwardedAmountIncludingVAT: filteredMOCsByProjectType.reduce(
+      (sum, moc) => sum + safeNumber(moc.contractValue)*1.15,
+      0
+    ),
+    totalSubmittedInvoicesWithoutVAT: allInvoicesForAggregation.reduce(
       (sum, row) =>
         sum +
-    (row?.amount ?? 0),
+        (row?.amount ?? 0),
+      0
+    ),
+    totalSubmittedInvoicesWithVAT: allInvoicesForAggregation.reduce(
+      (sum, row) =>
+        sum +
+        ((row?.amount ?? 0) + (row?.vat ?? 0)),
       0
     ),
     totalSubmittedInvoicesWithVATMinusRetention: allInvoicesForAggregation.reduce(
@@ -208,13 +219,21 @@ export default function InvoicesStatus() {
       0
     ),
     totalPaidInvoicesExcludingVATAndRetention: allInvoicesForAggregation
-    .filter((row) => row?.invoiceStatus === "PAID")
-    .reduce(
-      (sum, row) =>
-        sum +
-        ((row?.amount ?? 0) - (row?.retention ?? 0)),
-      0
-    ),
+      .filter((row) => row?.invoiceStatus === "PAID")
+      .reduce(
+        (sum, row) =>
+          sum +
+          ((row?.amount ?? 0) - (row?.retention ?? 0)),
+        0
+      ),
+    totalPaidInvoicesIncludingVAT: allInvoicesForAggregation
+      .filter((row) => row?.invoiceStatus === "PAID")
+      .reduce(
+        (sum, row) =>
+          sum +
+          ((row?.amount ?? 0) + (row?.vat ?? 0) - (row?.retention ?? 0)),
+        0
+      ),
     totalPaidInvoicesWithVATMinusRetention: allInvoicesForAggregation
       .filter((row) => row?.invoiceStatus === "PAID")
       .reduce(
@@ -223,39 +242,64 @@ export default function InvoicesStatus() {
           ((row?.amount ?? 0) + (row?.vat ?? 0) - (row?.retention ?? 0)),
         0
       ),
-    invoicesUnderFinanceWithVATMinusRetention: allInvoicesForAggregation
+    invoicesUnderFinanceIncludingVAT: allInvoicesForAggregation
       .filter((row) => row?.invoiceStatus === "FINANCE")
       .reduce(
         (sum, row) =>
           sum +
-          ((row?.amount ?? 0) + (row?.vat ?? 0) - (row?.retention ?? 0)),
+          ((row?.amount ?? 0) + (row?.vat ?? 0)),
         0
       ),
-    invoicesUnderPMDWithVATMinusRetention: allInvoicesForAggregation
+      invoicesUnderFinanceExcludingVAT: allInvoicesForAggregation
+      .filter((row) => row?.invoiceStatus === "FINANCE")
+      .reduce(
+        (sum, row) =>
+          sum +
+          (row?.amount ?? 0),
+        0
+      ),
+    invoicesUnderPMDIncludingVAT: allInvoicesForAggregation
       .filter((row) => row?.invoiceStatus === "PMD")
       .reduce(
         (sum, row) =>
           sum +
-          ((row?.amount ?? 0) + (row?.vat ?? 0) - (row?.retention ?? 0)),
+          ((row?.amount ?? 0) + (row?.vat ?? 0)),
         0
       ),
-    invoicesUnderPMTWithVATMinusRetention: allInvoicesForAggregation
+      invoicesUnderPMDExcludingVAT: allInvoicesForAggregation
+      .filter((row) => row?.invoiceStatus === "PMD")
+      .reduce(
+        (sum, row) =>
+          sum +
+          ((row?.amount ?? 0)),
+        0
+      ),
+    invoicesUnderPMTIncludingVAT: allInvoicesForAggregation
       .filter((row) => row?.invoiceStatus === "PMT")
       .reduce(
         (sum, row) =>
           sum +
-          ((row?.amount ?? 0) + (row?.vat ?? 0) - (row?.retention ?? 0)),
+          ((row?.amount ?? 0) + (row?.vat ?? 0)),
+        0
+      ),
+      invoicesUnderPMTExcludingVAT: allInvoicesForAggregation
+      .filter((row) => row?.invoiceStatus === "PMT")
+      .reduce(
+        (sum, row) =>
+          sum +
+          ((row?.amount ?? 0)),
         0
       ),
   };
 
-  const retentionValue = allInvoicesForAggregation
+  const OverallRetentionValue = allInvoicesForAggregation
     .filter((row) => row?.invoiceStatus === "PAID")
     .reduce((sum, row) => sum + (row?.retention ?? 0), 0);
 
   const paymentPercentage =
     aggregatedSums.totalPaidInvoicesWithVATMinusRetention /
     (aggregatedSums.totalSubmittedInvoicesWithVATMinusRetention || 1);
+
 
   const filteredMOCsWithSelectedCriteria = data
     .filter((moc) => selectedType === "Overall" || moc.type === selectedType)
@@ -273,45 +317,70 @@ export default function InvoicesStatus() {
     <div className="p-4 bg-gray-50 min-h-screen">
       {/* Dropdown Menu */}
       {/* <div className="mb-4 flex justify-end"> */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={showInMillions}
-            onCheckedChange={setShowInMillions}
-            id="show-millions"
-          />
-          <label htmlFor="show-millions" className="text-sm text-gray-600">
-            Show in millions
-          </label>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              {selectedType} <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setSelectedType("Overall")}>
-              Overall
-            </DropdownMenuItem>
-            {projectTypes.map((type) => (
-              <DropdownMenuItem key={type} onClick={() => setSelectedType(type)}>
-                {type}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <div className="mb-4 flex items-center justify-between gap-4">
+  <div className="flex-1 flex items-center space-x-2">
+    <Switch
+      checked={showInMillions}
+      onCheckedChange={setShowInMillions}
+      id="show-millions"
+    />
+    <label htmlFor="show-millions" className="text-sm text-gray-600">
+      Show in millions
+    </label>
+  </div>
+
+  <div className="flex-1 flex items-center space-x-2">
+    <Switch
+      checked={showIncludingVAT}
+      onCheckedChange={setShowIncludingVAT}
+      id="show-vat"
+    />
+    <label htmlFor="show-vat" className="text-sm text-gray-600">
+      Show including VAT
+    </label>
+  </div>
+
+  <div className="flex-1 flex justify-end">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">
+          {selectedType} <ChevronDown className="ml-2 h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setSelectedType("Overall")}>
+          Overall
+        </DropdownMenuItem>
+        {projectTypes.map((type) => (
+          <DropdownMenuItem key={type} onClick={() => setSelectedType(type)}>
+            {type}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+</div>
+
 
       {/* Merged Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-8">
         <MergedCard
-          title="Value Excluding VAT(SR)"
+          title={showIncludingVAT ?
+            "Awarded PO & Invoices (Incl. VAT)" :
+            "Awarded PO & Invoices (Excl. VAT)"
+          }
           leftLabel="Awarded PO Value"
-          leftValue={aggregatedSums.totalAwardedAmountExcludingVAT}
+          // leftValue={aggregatedSums.totalAwardedAmountExcludingVAT}
+
+          leftValue={showIncludingVAT ?
+            aggregatedSums.totalAwardedAmountIncludingVAT :
+            aggregatedSums.totalAwardedAmountExcludingVAT
+          }
+
           rightLabel="Invoices Submitted Value"
-          rightValue={
-            aggregatedSums.totalSubmittedInvoicesWithoutVAL
+          rightValue={showIncludingVAT ?
+            aggregatedSums.totalSubmittedInvoicesWithVAT :
+            aggregatedSums.totalSubmittedInvoicesWithoutVAT
           }
           onClick={() =>
             setSelectedCard((prev) =>
@@ -322,9 +391,17 @@ export default function InvoicesStatus() {
           showInMillions={showInMillions}
         />
         <MergedCard
-          title="Collection Exc. VAT & Retention(SR)"
+          // title="Collection Exc. VAT & Retention(SR)"
+          title={showIncludingVAT ?
+            "Collection (Incl. VAT)" :
+            "Collection (Excl. VAT)"
+          }
           leftLabel={statusMapping.PAID.label}
-          leftValue={aggregatedSums.totalPaidInvoicesExcludingVATAndRetention}
+          // leftValue={aggregatedSums.totalPaidInvoicesExcludingVATAndRetention}
+          leftValue={showIncludingVAT ?
+            aggregatedSums.totalPaidInvoicesIncludingVAT :
+            aggregatedSums.totalPaidInvoicesExcludingVATAndRetention
+          }
           rightLabel="Coll. % vs Submitted Inv."
           rightValue={paymentPercentage}
           leftColor={statusMapping.PAID.color}
@@ -338,11 +415,20 @@ export default function InvoicesStatus() {
           showInMillions={showInMillions} // Add this line
         />
         <MergedCard
-          title="Invoices to Finance & SC(SR)"
+          title={showIncludingVAT ?
+            "Invoices Transfererd To (Incl. VAT)" :
+            "Invoices Transfererd To (Excl. VAT)"
+          }
           leftLabel={statusMapping.FINANCE.label}
-          leftValue={aggregatedSums.invoicesUnderFinanceWithVATMinusRetention}
+          leftValue={showIncludingVAT ?
+            aggregatedSums.invoicesUnderFinanceIncludingVAT :
+            aggregatedSums.invoicesUnderFinanceExcludingVAT
+          }
           rightLabel={statusMapping.PMD.label}
-          rightValue={aggregatedSums.invoicesUnderPMDWithVATMinusRetention}
+          rightValue={showIncludingVAT ?
+            aggregatedSums.invoicesUnderPMDIncludingVAT :
+            aggregatedSums.invoicesUnderPMDExcludingVAT
+          }
           leftColor={statusMapping.FINANCE.color}
           rightColor={statusMapping.PMT.color}
           onClick={() =>
@@ -354,11 +440,18 @@ export default function InvoicesStatus() {
           showInMillions={showInMillions}
         />
         <MergedCard
-          title="Invoices Under PMT Review(SR)"
+          // title="Invoices Under PMT Review(SR)"
+          title={showIncludingVAT ?
+            "Invoices Under PMT (Incl. VAT)" :
+            "Invoices Under PMT (Excl. VAT)"
+          }
           leftLabel={statusMapping.PMT.label}
-          leftValue={aggregatedSums.invoicesUnderPMTWithVATMinusRetention}
-          rightLabel="Retention Value"
-          rightValue={retentionValue}
+          leftValue={showIncludingVAT ?
+            aggregatedSums.invoicesUnderPMTIncludingVAT :
+            aggregatedSums.invoicesUnderPMTExcludingVAT
+          }
+          rightLabel="Retention Held"
+          rightValue={OverallRetentionValue}
           leftColor={statusMapping.PMD.color}
           rightColor="text-amber-600"
           onClick={() =>
