@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
+
 import {
   Card,
   CardHeader,
@@ -15,7 +16,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+
+import { SettingsIcon, CheckIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
 import { getGroupedMOCs, PartialInvoices } from "@/app/actions/invoiceActions";
 import {
   BarChart,
@@ -127,6 +133,8 @@ const MergedCard: React.FC<MergedCardProps> = ({
   );
 };
 
+
+
 export default function InvoicesStatus() {
   const [selectedCard, setSelectedCard] = useState<string | null>("awarded");
   const [selectedType, setSelectedType] = useState<string>("Overall");
@@ -197,7 +205,7 @@ export default function InvoicesStatus() {
       0
     ),
     totalAwardedAmountIncludingVAT: filteredMOCsByProjectType.reduce(
-      (sum, moc) => sum + safeNumber(moc.contractValue)*1.15,
+      (sum, moc) => sum + safeNumber(moc.contractValue) * 1.15,
       0
     ),
     totalSubmittedInvoicesWithoutVAT: allInvoicesForAggregation.reduce(
@@ -250,7 +258,7 @@ export default function InvoicesStatus() {
           ((row?.amount ?? 0) + (row?.vat ?? 0)),
         0
       ),
-      invoicesUnderFinanceExcludingVAT: allInvoicesForAggregation
+    invoicesUnderFinanceExcludingVAT: allInvoicesForAggregation
       .filter((row) => row?.invoiceStatus === "FINANCE")
       .reduce(
         (sum, row) =>
@@ -266,7 +274,7 @@ export default function InvoicesStatus() {
           ((row?.amount ?? 0) + (row?.vat ?? 0)),
         0
       ),
-      invoicesUnderPMDExcludingVAT: allInvoicesForAggregation
+    invoicesUnderPMDExcludingVAT: allInvoicesForAggregation
       .filter((row) => row?.invoiceStatus === "PMD")
       .reduce(
         (sum, row) =>
@@ -282,7 +290,7 @@ export default function InvoicesStatus() {
           ((row?.amount ?? 0) + (row?.vat ?? 0)),
         0
       ),
-      invoicesUnderPMTExcludingVAT: allInvoicesForAggregation
+    invoicesUnderPMTExcludingVAT: allInvoicesForAggregation
       .filter((row) => row?.invoiceStatus === "PMT")
       .reduce(
         (sum, row) =>
@@ -315,45 +323,76 @@ export default function InvoicesStatus() {
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
-      {/* Dropdown Menu */}
-      {/* <div className="mb-4 flex justify-end"> */}
+
       <div className="mb-4 flex items-center justify-between gap-4">
-  <div className="flex-1 flex items-center space-x-2">
-    <Switch
-      checked={showInMillions}
-      onCheckedChange={setShowInMillions}
-      id="show-millions"
-    />
-    <label htmlFor="show-millions" className="text-sm text-gray-600">
-      Show in millions
-    </label>
-  </div>
+  {/* Settings Dropdown */}
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="outline" className="gap-1.5">
+        <SettingsIcon className="h-4 w-4" />
+        Display Settings
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent className="w-64">
+      {/* Amount Format Section */}
+      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+        Change Amount Format
+      </DropdownMenuLabel>
+      <DropdownMenuItem 
+        onClick={() => setShowInMillions(true)}
+        className="cursor-pointer"
+      >
+        <CheckIcon className={`mr-2 h-4 w-4 ${showInMillions ? "opacity-100" : "opacity-0"}`} />
+        Show Figures in Millions
+      </DropdownMenuItem>
+      <DropdownMenuItem 
+        onClick={() => setShowInMillions(false)}
+        className="cursor-pointer"
+      >
+        <CheckIcon className={`mr-2 h-4 w-4 ${!showInMillions ? "opacity-100" : "opacity-0"}`} />
+        Show Figures In Full Numbers
+      </DropdownMenuItem>
 
-  <div className="flex-1 flex items-center space-x-2">
-    <Switch
-      checked={showIncludingVAT}
-      onCheckedChange={setShowIncludingVAT}
-      id="show-vat"
-    />
-    <label htmlFor="show-vat" className="text-sm text-gray-600">
-      Show including VAT
-    </label>
-  </div>
+      <DropdownMenuSeparator />
 
-  <div className="flex-1 flex justify-end">
+      {/* VAT Display Section */}
+      <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+        VAT Options
+      </DropdownMenuLabel>
+      <DropdownMenuItem 
+        onClick={() => setShowIncludingVAT(true)}
+        className="cursor-pointer"
+      >
+        <CheckIcon className={`mr-2 h-4 w-4 ${showIncludingVAT ? "opacity-100" : "opacity-0"}`} />
+       Show Figures Include VAT
+      </DropdownMenuItem>
+      <DropdownMenuItem 
+        onClick={() => setShowIncludingVAT(false)}
+        className="cursor-pointer"
+      >
+        <CheckIcon className={`mr-2 h-4 w-4 ${!showIncludingVAT ? "opacity-100" : "opacity-0"}`} />
+        Show Figures Excluding VAT
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+
+  {/* Project Type Dropdown */}
+  <div className="flex items-center gap-2">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
-          {selectedType} <ChevronDown className="ml-2 h-4 w-4" />
+        <Button variant="outline" className="gap-1.5">
+          {selectedType}
+          <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setSelectedType("Overall")}>
-          Overall
+          <span className="min-w-[120px]">Overall</span>
         </DropdownMenuItem>
         {projectTypes.map((type) => (
           <DropdownMenuItem key={type} onClick={() => setSelectedType(type)}>
-            {type}
+            <span className="min-w-[120px]">{type}</span>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -957,4 +996,3 @@ export default function InvoicesStatus() {
     </div>
   );
 }
-
