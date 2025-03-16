@@ -1,4 +1,6 @@
+// File: app/actions/invoicePercentage.ts
 "use server";
+
 import { z } from "zod";
 import { db } from "../config/db";
 import { partialInvoices, mocs } from "../config/schema";
@@ -10,20 +12,22 @@ const numberSchema = z.preprocess((val) => {
   return val;
 }, z.number());
 
-// Zod validation schema for the MOC invoice summary
+// Extend the validation schema to include the type field.
 const MOCInvoiceSummarySchema = z.object({
   mocNo: z.string(),
   shortDescription: z.string().nullable(),
   contractValue: numberSchema,
   totalInvoiceAmount: numberSchema,
   percentageOfContractValue: numberSchema,
+  type: z.string(),
 });
 
 export type TMOCInvoiceSummary = z.infer<typeof MOCInvoiceSummarySchema>;
 
-export async function getMocSummary() {
+// Updated function to optionally filter by type.
+export async function getMocSummary(selectedType?: string) {
   try {
-    const rows = await db
+    const query = db
       .select({
         mocNo: mocs.mocNo,
         shortDescription: mocs.shortDescription,
@@ -36,17 +40,25 @@ export async function getMocSummary() {
             else 0
           end
         `,
+        type: mocs.type,
       })
       .from(mocs)
-      .leftJoin(partialInvoices, eq(mocs.id, partialInvoices.mocId))
-      .groupBy(mocs.mocNo, mocs.shortDescription, mocs.contractValue)
+      .leftJoin(partialInvoices, eq(mocs.id, partialInvoices.mocId));
+
+    // If a type is selected (and not "all"), add a where clause.
+    if (selectedType && selectedType !== "all") {
+      query.where(eq(mocs.type, selectedType));
+    }
+
+    query
+      .groupBy(mocs.mocNo, mocs.shortDescription, mocs.contractValue, mocs.type)
       .orderBy(mocs.mocNo);
 
+    const rows = await query;
     console.log("Raw database response:", rows);
 
-    // Validate and parse the database rows, converting numeric strings to numbers
+    // Validate and parse the database rows.
     const validatedData = z.array(MOCInvoiceSummarySchema).parse(rows);
-    
     return validatedData;
   } catch (error) {
     console.error("Detailed error:", error);
@@ -58,5 +70,19 @@ export async function getMocSummary() {
     throw new Error(
       "Failed to fetch MOC summary data. Please check database connection and query parameters."
     );
+  }
+}
+
+// New function to get a list of distinct types for the dropdown.
+export async function getDistinctTypes() {
+  try {
+    const rows = await db
+      .select({ type: mocs.type })
+      .from(mocs)
+      .groupBy(mocs.type);
+    return rows.map((row) => row.type);
+  } catch (error) {
+    console.error("Error fetching distinct types:", error);
+    throw new Error("Failed to fetch distinct types");
   }
 }
