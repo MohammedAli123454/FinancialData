@@ -10,6 +10,9 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { Switch } from "@/components/ui/switch"
 
 import {
@@ -164,16 +167,28 @@ export default function InvoicesStatus() {
     retry: 2, // Retry failed requests up to 2 times
   });
 
+
+
   const exportToExcel = useCallback(async () => {
+    if (!groupedMOCs || !groupedMOCs.success) return;
+  
+    const filteredData = groupedMOCs.data
+      .filter(moc => selectedType === "Overall" || moc.type === selectedType)
+      .map(moc => ({
+        ...moc,
+        invoices: selectedCard && Object.keys(statusMapping).includes(selectedCard)
+          ? (moc.invoices ?? []).filter(inv => inv.invoiceStatus === selectedCard)
+          : moc.invoices ?? []
+      }))
+      .filter(moc => moc.invoices.length > 0);
+  
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('INVOICE STATUS');
-
-      // Add frozen headers (this is the key line)
-  worksheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2' }];
+    worksheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2' }];
   
     // Column definitions
     const columns: ExcelColumnConfig[] = [
-      { header: 'SL. NO', key: 'slNo', width: 8, style: { alignment: { horizontal: 'center' } }},
+      { header: 'SL. NO', key: 'slNo', width: 8, style: { alignment: { horizontal: 'center' }}},
       { header: 'MOC NO.', key: 'mocNo', width: 18 },
       { header: 'CWO', key: 'cwo', width: 12 },
       { header: 'PO', key: 'po', width: 15 },
@@ -203,7 +218,7 @@ export default function InvoicesStatus() {
       cell.border = {
         top: { style: 'thin', color: { argb: 'FF000000' } },
         left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { 'style': 'medium', color: { argb: 'FF000000' } }, // Thicker bottom border
+        bottom: { style: 'medium', color: { argb: 'FF000000' } },
         right: { style: 'thin', color: { argb: 'FF000000' } }
       };
       cell.alignment = { 
@@ -218,7 +233,7 @@ export default function InvoicesStatus() {
     const mergeRanges: { start: number; end: number }[] = [];
     const borderGroups: { start: number; end: number }[] = [];
   
-    data.forEach((moc, mocIndex) => {
+    filteredData.forEach((moc, mocIndex) => {
       const invoices = moc.invoices || [];
       const groupStartRow = currentRow;
       const isMultiRow = invoices.length > 1;
@@ -254,17 +269,13 @@ export default function InvoicesStatus() {
             horizontal: 'center',
             wrapText: true
           };
-  
-          // Base borders for all cells
           cell.border = {
             top: { style: 'thin', color: { argb: 'FF000000' } },
             left: { style: 'thin', color: { argb: 'FF000000' } },
             bottom: { style: 'thin', color: { argb: 'FF000000' } },
             right: { style: 'thin', color: { argb: 'FF000000' } }
           };
-  
-          // Apply alternate coloring only to non-merged columns (G-O)
-          if (colNumber > 6 && rowNumber % 2 === 0) { // Columns G (7) to O (15)
+          if (colNumber > 6 && rowNumber % 2 === 0) {
             cell.fill = {
               type: 'pattern',
               pattern: 'solid',
@@ -273,7 +284,6 @@ export default function InvoicesStatus() {
           }
         });
   
-        // Store border group information
         if (isFirstRow) {
           borderGroups.push({
             start: currentRow,
@@ -285,7 +295,6 @@ export default function InvoicesStatus() {
         currentRow++;
       });
   
-      // Add merge range
       if (invoices.length > 0) {
         mergeRanges.push({
           start: groupStartRow,
@@ -299,34 +308,26 @@ export default function InvoicesStatus() {
       const borderGroup = borderGroups[index];
       const isSingleRow = borderGroup.start === borderGroup.end;
   
-      // Merge cells for columns A-F
       if (range.start !== range.end) {
         ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
           worksheet.mergeCells(`${col}${range.start}:${col}${range.end}`);
         });
       }
   
-      // Apply thicker outer borders
       ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
         const cell = worksheet.getCell(`${col}${borderGroup.start}`);
-        
-        // Top border for first row
         if (borderGroup.start === range.start) {
           cell.border = {
             ...cell.border,
             top: { style: 'medium', color: { argb: 'FF000000' } }
           };
         }
-        
-        // Bottom border for last row
         if (borderGroup.end === range.end || isSingleRow) {
           cell.border = {
             ...cell.border,
             bottom: { style: 'medium', color: { argb: 'FF000000' } }
           };
         }
-        
-        // Side borders for all rows
         cell.border = {
           ...cell.border,
           left: { style: 'medium', color: { argb: 'FF000000' } },
@@ -334,26 +335,20 @@ export default function InvoicesStatus() {
         };
       });
   
-      // Apply borders to non-merged columns (G-O)
       for (let row = borderGroup.start; row <= borderGroup.end; row++) {
-        // Left border of column G
         const leftCell = worksheet.getCell(`G${row}`);
         leftCell.border = {
           ...leftCell.border,
           left: { style: 'medium', color: { argb: 'FF000000' } }
         };
-  
-        // Right border of column O
         const rightCell = worksheet.getCell(`O${row}`);
         rightCell.border = {
           ...rightCell.border,
           right: { style: 'medium', color: { argb: 'FF000000' } }
         };
-  
-        // Top/bottom borders for first/last rows
         if (row === borderGroup.start) {
           worksheet.getRow(row).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            if (colNumber > 6) { // Columns G-O
+            if (colNumber > 6) {
               cell.border = {
                 ...cell.border,
                 top: { style: 'medium', color: { argb: 'FF000000' } }
@@ -363,7 +358,7 @@ export default function InvoicesStatus() {
         }
         if (row === borderGroup.end) {
           worksheet.getRow(row).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            if (colNumber > 6) { // Columns G-O
+            if (colNumber > 6) {
               cell.border = {
                 ...cell.border,
                 bottom: { style: 'medium', color: { argb: 'FF000000' } }
@@ -376,15 +371,14 @@ export default function InvoicesStatus() {
   
     // Add totals row
     const totalsRow = worksheet.addRow({
-      contractValue: data.reduce((sum, moc) => sum + (moc.contractValue || 0), 0),
-      amount: data.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.amount || 0), 0),
-      vat: data.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.vat || 0), 0),
-      retention: data.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.retention || 0), 0),
-      payable: data.flatMap(moc => moc.invoices).reduce((sum, inv) => 
+      contractValue: filteredData.reduce((sum, moc) => sum + (moc.contractValue || 0), 0),
+      amount: filteredData.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.amount || 0), 0),
+      vat: filteredData.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.vat || 0), 0),
+      retention: filteredData.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.retention || 0), 0),
+      payable: filteredData.flatMap(moc => moc.invoices).reduce((sum, inv) => 
         sum + ((inv?.amount || 0) + (inv?.vat || 0) - (inv?.retention || 0)), 0),
     });
   
-    // Format totals row
     totalsRow.eachCell(cell => {
       cell.font = { bold: true };
       cell.numFmt = '#,##0.00';
@@ -396,9 +390,76 @@ export default function InvoicesStatus() {
       };
     });
   
+    // Add summary rows
+    const totalInvoicesSubmitted = filteredData
+      .flatMap(moc => moc.invoices)
+      .reduce((sum, inv) => sum + (inv?.amount || 0), 0);
+  
+    const paymentReceived = filteredData
+      .flatMap(moc => moc.invoices)
+      .filter(inv => inv?.invoiceStatus === "PAID")
+      .reduce((sum, inv) => sum + (inv?.amount || 0) - (inv?.retention || 0), 0);
+  
+    const balancePayment = totalInvoicesSubmitted - paymentReceived;
+  
+    const summaryLabels = [
+      { 
+        label: "Total Invoices Submitted", 
+        value: totalInvoicesSubmitted,
+        column: 'I' // AMOUNT column
+      },
+      { 
+        label: "Total Payment Received", 
+        value: paymentReceived,
+        column: 'I' // AMOUNT column
+      },
+      { 
+        label: "Balance Amount To Be Received", 
+        value: balancePayment,
+        column: 'I' // PAYABLE column
+      }
+    ];
+  
+    summaryLabels.forEach((summary) => {
+
+      const summaryRow = worksheet.addRow({});
+      
+      // Merge label cells (A-H)
+      worksheet.mergeCells(`A${summaryRow.number}:H${summaryRow.number}`);
+      
+      // Set label and value
+      summaryRow.getCell('A').value = summary.label;
+      summaryRow.getCell(summary.column).value = summary.value;
+      
+      // Style the row
+      summaryRow.eachCell((cell, colNumber) => { // Use colNumber parameter instead of cell.col
+        cell.font = { bold: true };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+        
+        if (colNumber === 9 || colNumber === 11) { // Columns I (9) and K (11)
+          cell.numFmt = '#,##0.00';
+          cell.font = { 
+            bold: true,
+            color: { argb: 'FF000000' }
+          };
+        } else {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF8F8F8' }
+          };
+        }
+      });
+    });
+  
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), 'Invoice_Status_Report.xlsx');
-  }, [groupedMOCs]);
+  }, [groupedMOCs, selectedCard, selectedType]); // Added dependencies
 
   if (isLoading) return <div className="p-6">Loading...</div>;
   if (isError)
@@ -633,7 +694,6 @@ export default function InvoicesStatus() {
         <DownloadIcon className="h-4 w-4" />
         Export to Excel
       </Button>
-
 
   {/* Project Type Dropdown */}
   <div className="flex items-center gap-2">
