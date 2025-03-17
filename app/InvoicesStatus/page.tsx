@@ -167,6 +167,9 @@ export default function InvoicesStatus() {
   const exportToExcel = useCallback(async () => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('INVOICE STATUS');
+
+      // Add frozen headers (this is the key line)
+  worksheet.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activeCell: 'A2' }];
   
     // Column definitions
     const columns: ExcelColumnConfig[] = [
@@ -200,7 +203,7 @@ export default function InvoicesStatus() {
       cell.border = {
         top: { style: 'thin', color: { argb: 'FF000000' } },
         left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { 'style': 'medium', color: { argb: 'FF000000' } }, // Thicker bottom border
         right: { style: 'thin', color: { argb: 'FF000000' } }
       };
       cell.alignment = { 
@@ -213,13 +216,16 @@ export default function InvoicesStatus() {
     let rowNumber = 1;
     let currentRow = 2;
     const mergeRanges: { start: number; end: number }[] = [];
+    const borderGroups: { start: number; end: number }[] = [];
   
     data.forEach((moc, mocIndex) => {
       const invoices = moc.invoices || [];
       const groupStartRow = currentRow;
+      const isMultiRow = invoices.length > 1;
   
       invoices.forEach((invoice, invIndex) => {
         const isFirstRow = invIndex === 0;
+        const isLastRow = invIndex === invoices.length - 1;
         
         const row = worksheet.addRow({
           slNo: isFirstRow ? mocIndex + 1 : '',
@@ -239,56 +245,132 @@ export default function InvoicesStatus() {
           copySent: invoice.invoiceDate || ''
         });
   
-        // Set row height and formatting
+        // Set row height and base formatting
         row.height = 25;
-        row.eachCell(cell => {
+        row.eachCell((cell, colNumber) => {
           cell.font = { size: 11 };
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: 'center',
+            wrapText: true
+          };
+  
+          // Base borders for all cells
           cell.border = {
             top: { style: 'thin', color: { argb: 'FF000000' } },
             left: { style: 'thin', color: { argb: 'FF000000' } },
             bottom: { style: 'thin', color: { argb: 'FF000000' } },
             right: { style: 'thin', color: { argb: 'FF000000' } }
           };
-          cell.alignment = {
-            vertical: 'middle',
-            horizontal: 'center',
-            wrapText: true
-          };
+  
+          // Apply alternate coloring only to non-merged columns (G-O)
+          if (colNumber > 6 && rowNumber % 2 === 0) { // Columns G (7) to O (15)
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF8F8F8' }
+            };
+          }
         });
   
-        // Alternate row coloring
-        if (rowNumber % 2 === 0) {
-          row.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFF8F8F8' }
-          };
+        // Store border group information
+        if (isFirstRow) {
+          borderGroups.push({
+            start: currentRow,
+            end: currentRow + (invoices.length - 1)
+          });
         }
-        
+  
         rowNumber++;
-        currentRow++; // Critical: Increment current row counter
+        currentRow++;
       });
   
-      // Add merge range if multiple rows exist for this MOC
+      // Add merge range
       if (invoices.length > 0) {
         mergeRanges.push({
           start: groupStartRow,
-          end: currentRow - 1 // Subtract 1 because currentRow was incremented
+          end: currentRow - 1
         });
       }
     });
   
-    // Merge cells for columns A-F (SL.NO to Contract Value)
-    mergeRanges.forEach(range => {
-      if (range.start !== range.end) { // Only merge if multiple rows
+    // Apply merged cells and borders
+    mergeRanges.forEach((range, index) => {
+      const borderGroup = borderGroups[index];
+      const isSingleRow = borderGroup.start === borderGroup.end;
+  
+      // Merge cells for columns A-F
+      if (range.start !== range.end) {
         ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
           worksheet.mergeCells(`${col}${range.start}:${col}${range.end}`);
-          // Center align merged cells
-          worksheet.getCell(`${col}${range.start}`).alignment = { 
-            vertical: 'middle', 
-            horizontal: 'center' 
-          };
         });
+      }
+  
+      // Apply thicker outer borders
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
+        const cell = worksheet.getCell(`${col}${borderGroup.start}`);
+        
+        // Top border for first row
+        if (borderGroup.start === range.start) {
+          cell.border = {
+            ...cell.border,
+            top: { style: 'medium', color: { argb: 'FF000000' } }
+          };
+        }
+        
+        // Bottom border for last row
+        if (borderGroup.end === range.end || isSingleRow) {
+          cell.border = {
+            ...cell.border,
+            bottom: { style: 'medium', color: { argb: 'FF000000' } }
+          };
+        }
+        
+        // Side borders for all rows
+        cell.border = {
+          ...cell.border,
+          left: { style: 'medium', color: { argb: 'FF000000' } },
+          right: { style: 'medium', color: { argb: 'FF000000' } }
+        };
+      });
+  
+      // Apply borders to non-merged columns (G-O)
+      for (let row = borderGroup.start; row <= borderGroup.end; row++) {
+        // Left border of column G
+        const leftCell = worksheet.getCell(`G${row}`);
+        leftCell.border = {
+          ...leftCell.border,
+          left: { style: 'medium', color: { argb: 'FF000000' } }
+        };
+  
+        // Right border of column O
+        const rightCell = worksheet.getCell(`O${row}`);
+        rightCell.border = {
+          ...rightCell.border,
+          right: { style: 'medium', color: { argb: 'FF000000' } }
+        };
+  
+        // Top/bottom borders for first/last rows
+        if (row === borderGroup.start) {
+          worksheet.getRow(row).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            if (colNumber > 6) { // Columns G-O
+              cell.border = {
+                ...cell.border,
+                top: { style: 'medium', color: { argb: 'FF000000' } }
+              };
+            }
+          });
+        }
+        if (row === borderGroup.end) {
+          worksheet.getRow(row).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            if (colNumber > 6) { // Columns G-O
+              cell.border = {
+                ...cell.border,
+                bottom: { style: 'medium', color: { argb: 'FF000000' } }
+              };
+            }
+          });
+        }
       }
     });
   
@@ -307,10 +389,10 @@ export default function InvoicesStatus() {
       cell.font = { bold: true };
       cell.numFmt = '#,##0.00';
       cell.border = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
+        top: { style: 'medium', color: { argb: 'FF000000' } },
+        left: { style: 'medium', color: { argb: 'FF000000' } },
+        bottom: { style: 'medium', color: { argb: 'FF000000' } },
+        right: { style: 'medium', color: { argb: 'FF000000' } }
       };
     });
   
