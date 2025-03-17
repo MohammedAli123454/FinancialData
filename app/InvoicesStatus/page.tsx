@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
-
+import { ChevronDown, DownloadIcon } from "lucide-react";
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import {
   Card,
   CardHeader,
@@ -53,6 +54,14 @@ const formatMillions = (value: number, showInMillions: boolean) => {
 
 const safeString = (value: string | null) => value || "N/A";
 const safeNumber = (value: number | null) => value ?? 0;
+
+interface ExcelColumnConfig {
+  header: string;
+  key: string;
+  width: number;
+  style?: Partial<ExcelJS.Style>;
+  numFmt?: string;
+}
 
 // MergedCard Component
 type MergedCardProps = {
@@ -141,6 +150,8 @@ export default function InvoicesStatus() {
   const [selectedMoc, setSelectedMoc] = useState<PartialInvoices | null>(null);
   const [showInMillions, setShowInMillions] = useState(true); // Add this state
   const [showIncludingVAT, setShowIncludingVAT] = useState(true);
+
+ 
   // Fetch Data Using TanStack Query
   const {
     data: groupedMOCs,
@@ -152,6 +163,160 @@ export default function InvoicesStatus() {
     queryFn: () => getGroupedMOCs(),
     retry: 2, // Retry failed requests up to 2 times
   });
+
+  const exportToExcel = useCallback(async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('INVOICE STATUS');
+  
+    // Column definitions
+    const columns: ExcelColumnConfig[] = [
+      { header: 'SL. NO', key: 'slNo', width: 8, style: { alignment: { horizontal: 'center' } }},
+      { header: 'MOC NO.', key: 'mocNo', width: 18 },
+      { header: 'CWO', key: 'cwo', width: 12 },
+      { header: 'PO', key: 'po', width: 15 },
+      { header: 'PROPOSAL#', key: 'proposal', width: 25 },
+      { header: 'Contract Value (SAR)\nExcl. VAT', key: 'contractValue', width: 20, numFmt: '#,##0.00' },
+      { header: 'INVOICE #', key: 'invoiceNo', width: 20 },
+      { header: 'DATE', key: 'date', width: 18, numFmt: 'yyyy-mm-dd' },
+      { header: 'AMOUNT', key: 'amount', width: 15, numFmt: '#,##0.00' },
+      { header: 'VAT', key: 'vat', width: 12, numFmt: '#,##0.00' },
+      { header: 'Retention', key: 'retention', width: 12, numFmt: '#,##0.00' },
+      { header: 'Payable', key: 'payable', width: 15, numFmt: '#,##0.00' },
+      { header: 'Payment Recd. Date', key: 'paymentDate', width: 18, numFmt: 'yyyy-mm-dd' },
+      { header: 'INVOICE STATUS', key: 'status', width: 18 },
+      { header: 'INVOICE COPY SEND TO HO', key: 'copySent', width: 22, numFmt: 'yyyy-mm-dd' },
+    ];
+  
+    worksheet.columns = columns;
+  
+    // Header styling
+    worksheet.getRow(1).eachCell(cell => {
+      cell.font = { bold: true, size: 11, color: { argb: 'FF000000' } };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFDDEBF7' }
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+      cell.alignment = { 
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true 
+      };
+    });
+  
+    let rowNumber = 1;
+    let currentRow = 2;
+    const mergeRanges: { start: number; end: number }[] = [];
+  
+    data.forEach((moc, mocIndex) => {
+      const invoices = moc.invoices || [];
+      const groupStartRow = currentRow;
+  
+      invoices.forEach((invoice, invIndex) => {
+        const isFirstRow = invIndex === 0;
+        
+        const row = worksheet.addRow({
+          slNo: isFirstRow ? mocIndex + 1 : '',
+          mocNo: isFirstRow ? moc.mocNo : '',
+          cwo: isFirstRow ? moc.cwo : '',
+          po: isFirstRow ? moc.po : '',
+          proposal: isFirstRow ? moc.proposal : '',
+          contractValue: isFirstRow ? moc.contractValue : '',
+          invoiceNo: invoice.invoiceNo,
+          date: invoice.invoiceDate,
+          amount: invoice.amount,
+          vat: invoice.vat,
+          retention: invoice.retention,
+          payable: invoice.amount + invoice.vat - invoice.retention,
+          paymentDate: invoice.invoiceDate || '',
+          status: invoice.invoiceStatus,
+          copySent: invoice.invoiceDate || ''
+        });
+  
+        // Set row height and formatting
+        row.height = 25;
+        row.eachCell(cell => {
+          cell.font = { size: 11 };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF000000' } },
+            left: { style: 'thin', color: { argb: 'FF000000' } },
+            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+            right: { style: 'thin', color: { argb: 'FF000000' } }
+          };
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: 'center',
+            wrapText: true
+          };
+        });
+  
+        // Alternate row coloring
+        if (rowNumber % 2 === 0) {
+          row.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF8F8F8' }
+          };
+        }
+        
+        rowNumber++;
+        currentRow++; // Critical: Increment current row counter
+      });
+  
+      // Add merge range if multiple rows exist for this MOC
+      if (invoices.length > 0) {
+        mergeRanges.push({
+          start: groupStartRow,
+          end: currentRow - 1 // Subtract 1 because currentRow was incremented
+        });
+      }
+    });
+  
+    // Merge cells for columns A-F (SL.NO to Contract Value)
+    mergeRanges.forEach(range => {
+      if (range.start !== range.end) { // Only merge if multiple rows
+        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
+          worksheet.mergeCells(`${col}${range.start}:${col}${range.end}`);
+          // Center align merged cells
+          worksheet.getCell(`${col}${range.start}`).alignment = { 
+            vertical: 'middle', 
+            horizontal: 'center' 
+          };
+        });
+      }
+    });
+  
+    // Add totals row
+    const totalsRow = worksheet.addRow({
+      contractValue: data.reduce((sum, moc) => sum + (moc.contractValue || 0), 0),
+      amount: data.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.amount || 0), 0),
+      vat: data.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.vat || 0), 0),
+      retention: data.flatMap(moc => moc.invoices).reduce((sum, inv) => sum + (inv?.retention || 0), 0),
+      payable: data.flatMap(moc => moc.invoices).reduce((sum, inv) => 
+        sum + ((inv?.amount || 0) + (inv?.vat || 0) - (inv?.retention || 0)), 0),
+    });
+  
+    // Format totals row
+    totalsRow.eachCell(cell => {
+      cell.font = { bold: true };
+      cell.numFmt = '#,##0.00';
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } }
+      };
+    });
+  
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), 'Invoice_Status_Report.xlsx');
+  }, [groupedMOCs]);
 
   if (isLoading) return <div className="p-6">Loading...</div>;
   if (isError)
@@ -171,6 +336,10 @@ export default function InvoicesStatus() {
   }
 
   const data = groupedMOCs.data;
+
+
+  
+
 
 
   // Status Mapping for Invoice Statuses
@@ -376,6 +545,13 @@ export default function InvoicesStatus() {
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
+
+
+  <Button onClick={exportToExcel} variant="outline" className="gap-1.5">
+        <DownloadIcon className="h-4 w-4" />
+        Export to Excel
+      </Button>
+
 
   {/* Project Type Dropdown */}
   <div className="flex items-center gap-2">
