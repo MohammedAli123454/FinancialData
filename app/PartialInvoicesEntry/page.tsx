@@ -1,14 +1,14 @@
 "use client";
 import { useState, useTransition, useEffect, useCallback } from "react";
+import { ToastContainer, toast } from 'react-toastify';
 import DatePicker from "react-datepicker";
 import { Calendar } from "@/components/ui/calendar";
 import "react-datepicker/dist/react-datepicker.css";
-
 import {
   addPartialInvoice,
   updatePartialInvoice,
   deletePartialInvoice,
-} from "../actions/invoiceActions";
+} from "../actions/partialInvoiceCURD"
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,7 @@ interface PartialInvoiceBase {
   vat?: number;
   retention?: number;
   invoiceStatus?: string;
+  receiptDate?: string | null;
 }
 
 interface PartialInvoice extends PartialInvoiceBase {
@@ -94,6 +95,9 @@ const SkeletonRow = () => (
       <Skeleton className="h-4 w-[100px]" />
     </TableCell>
     <TableCell>
+      <Skeleton className="h-4 w-[100px]" />
+    </TableCell>
+    <TableCell>
       <Skeleton className="h-4 w-[180px]" />
     </TableCell>
     <TableCell>
@@ -117,6 +121,9 @@ export default function PartialInvoicesEntry() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
   const [startDate, endDate] = dateRange;
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [tempStatus, setTempStatus] = useState("");
+  const [originalStatus, setOriginalStatus] = useState("");
 
   // Form State
   const [formData, setFormData] = useState({
@@ -127,6 +134,7 @@ export default function PartialInvoicesEntry() {
     vat: "",
     retention: "",
     invoiceStatus: "",
+    receiptDate: null as Date | null,
   });
 
   // Data Fetching
@@ -156,6 +164,7 @@ export default function PartialInvoicesEntry() {
               amount: parseFloat(invoice.amount),
               vat: parseFloat(invoice.vat),
               retention: parseFloat(invoice.retention),
+              receiptDate: invoice.receiptDate,
               mocNo: moc?.mocNo || "",
             };
           })
@@ -230,6 +239,11 @@ export default function PartialInvoicesEntry() {
     e.preventDefault();
     startTransition(async () => {
       try {
+        if (editId && formData.invoiceStatus !== originalStatus && !formData.receiptDate) {
+          showDialog("Error", "Receipt date is required when changing status");
+          return;
+        }
+
         const invoiceData = {
           ...formData,
           mocId: parseInt(formData.mocId),
@@ -237,6 +251,7 @@ export default function PartialInvoicesEntry() {
           vat: parseFloat(formData.vat),
           retention: parseFloat(formData.retention),
           invoiceDate: format(formData.invoiceDate, "yyyy-MM-dd"),
+          receiptDate: formData.receiptDate ? format(formData.receiptDate, "yyyy-MM-dd") : null,
         };
 
         if (editId) {
@@ -265,7 +280,9 @@ export default function PartialInvoicesEntry() {
       vat: invoice.vat?.toString() || "",
       retention: invoice.retention?.toString() || "",
       invoiceStatus: invoice.invoiceStatus ?? "",
+      receiptDate: invoice.receiptDate ? new Date(invoice.receiptDate) : null,
     });
+    setOriginalStatus(invoice.invoiceStatus ?? "");
     setEditId(invoice.id);
   };
 
@@ -284,15 +301,22 @@ export default function PartialInvoicesEntry() {
     });
   };
 
-  const handleStatusChange = async (id: number, status: string) => {
-    startTransition(async () => {
-      try {
-        await updatePartialInvoice(id, { invoiceStatus: status });
-        refreshInvoices();
-      } catch (error) {
-        console.error("Status update error:", error);
-      }
-    });
+  const handleStatusChange = (value: string) => {
+    if (editId && value !== originalStatus) {
+      setTempStatus(value);
+      setShowReceiptDialog(true);
+    } else {
+      setFormData({ ...formData, invoiceStatus: value });
+    }
+  };
+
+  const confirmReceiptDate = (date: Date) => {
+    setFormData(prev => ({
+      ...prev,
+      invoiceStatus: tempStatus,
+      receiptDate: date,
+    }));
+    setShowReceiptDialog(false);
   };
 
   // Helper Functions
@@ -314,6 +338,7 @@ export default function PartialInvoicesEntry() {
           vat: partialInvoices.vat,
           retention: partialInvoices.retention,
           invoiceStatus: partialInvoices.invoiceStatus,
+          receiptDate: partialInvoices.receiptDate,
           mocNo: mocs.mocNo,
         })
         .from(partialInvoices)
@@ -326,6 +351,7 @@ export default function PartialInvoicesEntry() {
         vat: parseFloat(row.vat),
         retention: parseFloat(row.retention),
         invoiceStatus: row.invoiceStatus.trim().toUpperCase(),
+        receiptDate: row.receiptDate,
       }));
 
       setInvoices(updatedInvoices);
@@ -358,20 +384,20 @@ export default function PartialInvoicesEntry() {
       vat: "",
       retention: "",
       invoiceStatus: "",
+      receiptDate: null,
     });
     setEditId(null);
   };
 
-// Update the useEffect that generates invoice numbers
-useEffect(() => {
-  // Only generate invoice number when not in edit mode
-  if (formData.mocId && !editId) {
-    generateInvoiceNumber(formData.mocId);
-  }
-}, [formData.mocId, generateInvoiceNumber, editId]); // Add editId to dependencies
+  useEffect(() => {
+    if (formData.mocId && !editId) {
+      generateInvoiceNumber(formData.mocId);
+    }
+  }, [formData.mocId, generateInvoiceNumber, editId]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
+      <ToastContainer position="top-center" autoClose={3000} />
       <div className="flex-grow max-w-7xl mx-auto w-full px-4 py-4">
         <div className="bg-white rounded-lg shadow-lg p-2 h-full flex flex-col">
           <h3 className="text-2xl font-bold text-gray-800 mb-4">
@@ -478,102 +504,104 @@ useEffect(() => {
               />
             </div>
 
-            {/* New combined row: Partial Invoices title, Invoice Status, Action Buttons, and Search Input */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <FormField
                   label="Status *"
                   content={
-                    <Select
-                      value={formData.invoiceStatus}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, invoiceStatus: value })
-                      }
-                      required
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(STATUS_COLORS).map(([status, color]) => (
-                          <SelectItem
-                            key={status}
-                            value={status}
-                            className={`text-sm ${color}`}
-                          >
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <>
+                      <Select
+                        value={formData.invoiceStatus}
+                        onValueChange={handleStatusChange}
+                        required
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Select Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(STATUS_COLORS).map(([status, color]) => (
+                            <SelectItem
+                              key={status}
+                              value={status}
+                              className={`text-sm ${color}`}
+                            >
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <ReceiptDateDialog
+                        open={showReceiptDialog}
+                        onOpenChange={setShowReceiptDialog}
+                        onConfirm={confirmReceiptDate}
+                      />
+                    </>
                   }
                 />
               </div>
               <div className="flex items-center space-x-2 justify-end">
-  {editId && (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={resetForm}
-      disabled={isPending}
-    >
-      Cancel
-    </Button>
-  )}
-  <Button type="submit" className="w-full md:w-auto" disabled={isPending}>
-    {isPending ? "Processing..." : editId ? "Update Invoice" : "Add Invoice"}
-  </Button>
+                {editId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetForm}
+                    disabled={isPending}
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button type="submit" className="w-full md:w-auto" disabled={isPending}>
+                  {isPending ? "Processing..." : editId ? "Update Invoice" : "Add Invoice"}
+                </Button>
 
-  <div className="flex items-center space-x-2">
-    <Input
-      placeholder="Search invoices..."
-      value={searchQuery}
-      onChange={(e) => {
-        setSearchQuery(e.target.value);
-        setDateRange([null, null]);
-      }}
-      className="w-48"
-    />
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline">
-          <CalendarIcon className="h-4 w-4 mr-2" />
-          {startDate ? 
-            (endDate ? 
-              `${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd')}` : 
-              format(startDate, 'MMM dd')) : 
-            "Select Date Range"}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="range"
-          selected={{ from: startDate || undefined, to: endDate || undefined }}
-          onSelect={(range) => {
-            setDateRange([range?.from || null, range?.to || null]);
-            setSearchQuery("");
-          }}
-          numberOfMonths={2}
-          className="rounded-md border"
-        />
-      </PopoverContent>
-    </Popover>
-  </div>
-</div>
+                <div className="flex items-center space-x-2">
+                  <Input
+                    placeholder="Search invoices..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setDateRange([null, null]);
+                    }}
+                    className="w-48"
+                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline">
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        {startDate ? 
+                          (endDate ? 
+                            `${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd')}` : 
+                            format(startDate, 'MMM dd')) : 
+                          "Select Date Range"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="range"
+                        selected={{ from: startDate || undefined, to: endDate || undefined }}
+                        onSelect={(range) => {
+                          setDateRange([range?.from || null, range?.to || null]);
+                          setSearchQuery("");
+                        }}
+                        numberOfMonths={2}
+                        className="rounded-md border"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
             </div>
           </form>
 
-          {/* Invoices Table */}
           <InvoiceTable
             invoices={filteredInvoices}
             isLoading={isLoading}
             isPending={isPending}
             onEdit={handleEdit}
             onDelete={setDeleteId}
-            onStatusChange={handleStatusChange}
+            refreshInvoices={refreshInvoices}
           />
 
-          {/* Dialogs */}
           <MessageDialog
             open={dialogOpen}
             title={dialogTitle}
@@ -607,27 +635,27 @@ const InvoiceTable = ({
   isPending,
   onEdit,
   onDelete,
-  onStatusChange,
+  refreshInvoices,
 }: {
   invoices: PartialInvoice[];
   isLoading: boolean;
   isPending: boolean;
   onEdit: (invoice: PartialInvoice) => void;
   onDelete: (id: number) => void;
-  onStatusChange: (id: number, value: string) => void;
+  refreshInvoices: () => void;
 }) => (
   <div className="mt-8 flex-1 flex flex-col">
     <div className="border rounded-lg overflow-hidden flex-1">
       <div className="relative h-full">
         <div className="absolute inset-0 overflow-auto">
           <Table className="border-collapse">
-            {/* Updated TableHeader: sticky with light background */}
             <TableHeader className="sticky top-0 bg-gray-50 shadow-sm z-10">
               <TableRow className="h-8">
                 <TableHead className="font-semibold text-gray-700 py-2">MOC Number</TableHead>
                 <TableHead className="font-semibold text-gray-700 py-2">Invoice No</TableHead>
                 <TableHead className="font-semibold text-gray-700 py-2">Inv. Sub. Date</TableHead>
-                <TableHead className="font-semibold text-gray-700 py-2">Invoice Amount</TableHead>
+                <TableHead className="font-semibold text-gray-700 py-2">Amount</TableHead>
+                <TableHead className="font-semibold text-gray-700 py-2">Receipt Date</TableHead>
                 <TableHead className="font-semibold text-gray-700 py-2">Status</TableHead>
                 <TableHead className="font-semibold text-gray-700 py-2">Actions</TableHead>
               </TableRow>
@@ -635,16 +663,14 @@ const InvoiceTable = ({
 
             <TableBody>
               {isLoading
-                ? Array(5)
-                  .fill(0)
-                  .map((_, i) => <SkeletonRow key={i} />)
+                ? Array(5).fill(0).map((_, i) => <SkeletonRow key={i} />)
                 : invoices.map((invoice) => (
                   <InvoiceRow
                     key={invoice.id}
                     invoice={invoice}
                     onEdit={onEdit}
                     onDelete={onDelete}
-                    onStatusChange={onStatusChange}
+                    refreshInvoices={refreshInvoices}
                   />
                 ))}
             </TableBody>
@@ -664,53 +690,136 @@ const InvoiceRow = ({
   invoice,
   onEdit,
   onDelete,
-  onStatusChange,
+  refreshInvoices,
 }: {
   invoice: PartialInvoice;
   onEdit: (invoice: PartialInvoice) => void;
   onDelete: (id: number) => void;
-  onStatusChange: (id: number, value: string) => void;
-}) => (
-  <TableRow className="h-8 hover:bg-gray-50">
-    <TableCell className="py-1">{invoice.mocNo}</TableCell>
-    <TableCell className="p-1">{invoice.invoiceNo}</TableCell>
-    <TableCell className="p-1">
-      {invoice.invoiceDate
-        ? new Date(invoice.invoiceDate).toLocaleDateString()
-        : "N/A"}
-    </TableCell>
-    <TableCell className="font-medium">
-      {invoice.amount !== undefined
-        ? invoice.amount.toFixed(2)
-        : "0.00"}
-    </TableCell>
-    <TableCell className="p-1">
-      <Select
-        value={invoice.invoiceStatus}
-        onValueChange={(value) => onStatusChange(invoice.id, value)}
-      >
-        <SelectTrigger className="w-32">
-          <SelectValue placeholder="Select Status" />
-        </SelectTrigger>
-        <SelectContent>
-          {Object.entries(STATUS_COLORS).map(([status, color]) => (
-            <SelectItem key={status} value={status} className={color}>
-              {status}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </TableCell>
-    <TableCell className="p-1 space-x-2">
-      <Button variant="outline" size="icon" onClick={() => onEdit(invoice)}>
-        <Edit className="h-3 w-3" />
-      </Button>
-      <Button variant="destructive" size="icon" onClick={() => onDelete(invoice.id)}>
-        <Trash2 className="h-3 w-3" />
-      </Button>
-    </TableCell>
-  </TableRow>
-);
+  refreshInvoices: () => void;
+}) => {
+  const [isPending, startTransition] = useTransition();
+  const [showDateDialog, setShowDateDialog] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("");
+
+  const handleStatusSelect = (newStatus: string) => {
+    if (newStatus === 'PAID') {
+      setSelectedStatus(newStatus);
+      setShowDateDialog(true);
+    } else {
+      startTransition(async () => {
+        await updatePartialInvoice(invoice.id, { invoiceStatus: newStatus });
+        refreshInvoices();
+        toast.success(`Status updated to ${newStatus}`);
+      });
+    }
+  };
+
+  const handleDateConfirm = (date: Date) => {
+    startTransition(async () => {
+      await updatePartialInvoice(invoice.id, { 
+        invoiceStatus: selectedStatus,
+        receiptDate: format(date, "yyyy-MM-dd")
+      });
+      refreshInvoices();
+      toast.success(`Marked as PAID with receipt date ${format(date, 'MMM dd, yyyy')}`);
+      setShowDateDialog(false);
+    });
+  };
+
+  return (
+    <>
+      <TableRow className="h-8 hover:bg-gray-50">
+        <TableCell className="py-1">{invoice.mocNo}</TableCell>
+        <TableCell className="p-1">{invoice.invoiceNo}</TableCell>
+        <TableCell className="p-1">
+          {invoice.invoiceDate
+            ? new Date(invoice.invoiceDate).toLocaleDateString()
+            : "N/A"}
+        </TableCell>
+        <TableCell className="font-medium">
+          {invoice.amount?.toFixed(2) || "0.00"}
+        </TableCell>
+        <TableCell className="p-1">
+          {invoice.receiptDate
+            ? new Date(invoice.receiptDate).toLocaleDateString()
+            : "N/A"}
+        </TableCell>
+        <TableCell className="p-1">
+          <Select
+            value={invoice.invoiceStatus}
+            onValueChange={handleStatusSelect}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(STATUS_COLORS).map(([status, color]) => (
+                <SelectItem key={status} value={status} className={color}>
+                  {status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </TableCell>
+        <TableCell className="p-1 space-x-2">
+          <Button variant="outline" size="icon" onClick={() => onEdit(invoice)}>
+            <Edit className="h-3 w-3" />
+          </Button>
+          <Button variant="destructive" size="icon" onClick={() => onDelete(invoice.id)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </TableCell>
+      </TableRow>
+
+      <ReceiptDateDialog
+        open={showDateDialog}
+        onOpenChange={setShowDateDialog}
+        onConfirm={handleDateConfirm}
+      />
+    </>
+  );
+};
+
+const ReceiptDateDialog = ({
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (date: Date) => void;
+}) => {
+  const [date, setDate] = useState<Date | undefined>(new Date());
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Select Receipt Date</DialogTitle>
+          <DialogDescription>
+            Please select the receipt date for the status change
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            className="rounded-md border"
+          />
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            onClick={() => date && onConfirm(date)}
+          >
+            Confirm
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const MessageDialog = ({
   open,

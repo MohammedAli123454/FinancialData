@@ -43,11 +43,13 @@ export const partialInvoices = pgTable("partial_invoices", {
   mocId: integer("moc_id").references(() => mocs.id).notNull(),
   invoiceNo: text("invoice_no").notNull(),
   invoiceDate: date("invoice_date").notNull(),
+  receiptDate: date("receipt_date"), // Field is nullable by d
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   vat: numeric("vat", { precision: 12, scale: 2 }).notNull(),
   retention: numeric("retention", { precision: 12, scale: 2 }).notNull(),
   payable: numeric("payable", { precision: 12, scale: 2 }).notNull(),
   invoiceStatus: text("invoice_status").notNull(),
 });
+
 
 export type User = typeof users.$inferSelect;
