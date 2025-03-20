@@ -1,5 +1,7 @@
 "use client";
 import { useState, useTransition, useEffect, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastContainer, toast } from 'react-toastify';
 import DatePicker from "react-datepicker";
 import { Calendar } from "@/components/ui/calendar";
@@ -8,7 +10,11 @@ import {
   addPartialInvoice,
   updatePartialInvoice,
   deletePartialInvoice,
+  getMocOptions,
+  getPartialInvoices
 } from "../actions/partialInvoiceCURD"
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -21,9 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { db } from "../config/db";
-import { mocs, partialInvoices } from "../config/schema";
-import { eq } from "drizzle-orm";
 import {
   Dialog,
   DialogContent,
@@ -44,27 +47,45 @@ import { Edit, Trash2, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Interfaces
+// Zod Schema
+const formSchema = z.object({
+  mocId: z.string().min(1, "MOC is required"),
+  invoiceNo: z.string().min(1, "Invoice number is required"),
+  invoiceDate: z.date(),
+  amount: z.string().min(1, "Amount is required"),
+  vat: z.string(),
+  retention: z.string(),
+  invoiceStatus: z.string().min(1, "Status is required"),
+  receiptDate: z.date().optional().nullable()
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 interface MocOption {
   id: number;
   mocNo: string;
   cwo: string;
 }
 
-interface PartialInvoiceBase {
-  mocId?: number;
-  invoiceNo?: string;
-  invoiceDate?: string;
-  amount?: number;
-  vat?: number;
-  retention?: number;
-  invoiceStatus?: string;
-  receiptDate?: string | null;
+// Interfaces
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
 }
 
-interface PartialInvoice extends PartialInvoiceBase {
+// Interfaces
+interface PartialInvoice {
   id: number;
+  mocId: number;
   mocNo: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  amount: number;
+  vat: number;
+  retention: number;
+  invoiceStatus: string;
+  receiptDate: string | null;
 }
 
 // Constants
@@ -82,105 +103,83 @@ const Spinner = () => (
 
 const SkeletonRow = () => (
   <TableRow className="h-8">
-    <TableCell>
-      <Skeleton className="h-4 w-[100px]" />
-    </TableCell>
-    <TableCell>
-      <Skeleton className="h-4 w-[150px]" />
-    </TableCell>
-    <TableCell>
-      <Skeleton className="h-4 w-[100px]" />
-    </TableCell>
-    <TableCell>
-      <Skeleton className="h-4 w-[100px]" />
-    </TableCell>
-    <TableCell>
-      <Skeleton className="h-4 w-[100px]" />
-    </TableCell>
-    <TableCell>
-      <Skeleton className="h-4 w-[180px]" />
-    </TableCell>
-    <TableCell>
-      <Skeleton className="h-4 w-[100px]" />
-    </TableCell>
+    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
+    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
   </TableRow>
 );
 
 export default function PartialInvoicesEntry() {
-  // State Management
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const [mocOptions, setMocOptions] = useState<MocOption[]>([]);
-  const [invoices, setInvoices] = useState<PartialInvoice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isGeneratingInvoiceNo, setIsGeneratingInvoiceNo] = useState(false);
+  const queryClient = useQueryClient();
   const [editId, setEditId] = useState<number | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogTitle, setDialogTitle] = useState("");
-  const [dialogMessage, setDialogMessage] = useState("");
-  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
-  const [startDate, endDate] = dateRange;
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [tempStatus, setTempStatus] = useState("");
   const [originalStatus, setOriginalStatus] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [startDate, endDate] = dateRange;
 
-  // Form State
-  const [formData, setFormData] = useState({
-    mocId: "",
-    invoiceNo: "",
-    invoiceDate: new Date(),
-    amount: "",
-    vat: "",
-    retention: "",
-    invoiceStatus: "",
-    receiptDate: null as Date | null,
+  // React Hook Form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      mocId: "",
+      invoiceNo: "",
+      invoiceDate: new Date(),
+      amount: "",
+      vat: "",
+      retention: "",
+      invoiceStatus: "",
+      receiptDate: null
+    }
   });
 
-  // Data Fetching
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [mocsResult, invoicesResult] = await Promise.all([
-          db.select().from(mocs),
-          db.select().from(partialInvoices),
-        ]);
+  // TanStack Queries
+  const { data: mocOptions } = useQuery<ApiResponse<MocOption[]>>({
+    queryKey: ['mocOptions'],
+    queryFn: getMocOptions
+  });
 
-        setMocOptions(
-          mocsResult.map((moc) => ({
-            id: moc.id,
-            mocNo: moc.mocNo,
-            cwo: moc.cwo,
-          }))
-        );
+  const { data: invoices, isLoading } = useQuery<ApiResponse<PartialInvoice[]>>({
+    queryKey: ['partialInvoices'],
+    queryFn: getPartialInvoices
+  });
 
-        const sortedInvoices = invoicesResult
-          .map((invoice) => {
-            const moc = mocsResult.find((m) => m.id === invoice.mocId);
-            return {
-              ...invoice,
-              mocId: invoice.mocId,
-              invoiceDate: invoice.invoiceDate,
-              amount: parseFloat(invoice.amount),
-              vat: parseFloat(invoice.vat),
-              retention: parseFloat(invoice.retention),
-              receiptDate: invoice.receiptDate,
-              mocNo: moc?.mocNo || "",
-            };
-          })
-          .sort((a, b) => a.mocNo.localeCompare(b.mocNo));
+  // Mutations
+  const addMutation = useMutation({
+    mutationFn: addPartialInvoice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partialInvoices'] });
+      toast.success("Invoice added successfully!");
+      form.reset();
+    },
+    onError: () => toast.error("Error adding invoice")
+  });
 
-        setInvoices(sortedInvoices);
-      } catch (error) {
-        console.error("Initial data fetch error:", error);
-        showDialog("Error", "Failed to load initial data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const updateMutation = useMutation({
+    mutationFn: (data: { id: number, values: any }) =>
+      updatePartialInvoice(data.id, data.values),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partialInvoices'] });
+      toast.success("Invoice updated successfully!");
+      form.reset();
+      setEditId(null);
+    },
+    onError: () => toast.error("Error updating invoice")
+  });
 
-    fetchInitialData();
-  }, []);
+  const deleteMutation = useMutation({
+    mutationFn: deletePartialInvoice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partialInvoices'] });
+      toast.success("Invoice deleted successfully!");
+    },
+    onError: () => toast.error("Error deleting invoice")
+  });
 
   // Business Logic
   const calculateValues = useCallback((amount: number) => ({
@@ -192,208 +191,94 @@ export default function PartialInvoicesEntry() {
     const amount = parseFloat(value);
     if (!isNaN(amount)) {
       const { vat, retention } = calculateValues(amount);
-      setFormData((prev) => ({
-        ...prev,
-        amount: value,
-        vat: vat.toFixed(2),
-        retention: retention.toFixed(2),
-      }));
+      form.setValue('vat', vat.toFixed(2));
+      form.setValue('retention', retention.toFixed(2));
     }
   };
 
-  const generateInvoiceNumber = useCallback(
-    async (mocId: string) => {
-      setIsGeneratingInvoiceNo(true);
-      try {
-        const moc = mocOptions.find((m) => m.id.toString() === mocId);
-        if (!moc) return;
+  const generateInvoiceNumber = useCallback(async (mocId: string) => {
+    const moc = (mocOptions as ApiResponse<MocOption[]>)?.data?.find((m) =>
+      m.id.toString() === mocId
+    );
 
-        const existingInvoices = await db
-          .select({ invoiceNo: partialInvoices.invoiceNo })
-          .from(partialInvoices)
-          .where(eq(partialInvoices.mocId, parseInt(mocId)));
+    if (!moc) return;
 
-        let maxNumber = 0;
-        existingInvoices.forEach(({ invoiceNo }) => {
-          const match = invoiceNo.match(/INV-C-(\d+)$/);
-          if (match) {
-            const num = parseInt(match[1], 10);
-            maxNumber = Math.max(maxNumber, num);
-          }
-        });
+    const existingInvoices = await queryClient.getQueryData(['partialInvoices']) as
+      ApiResponse<PartialInvoice[]>;
 
-        const nextNumber = maxNumber + 1;
-        const paddedNumber = nextNumber.toString().padStart(3, "0");
-        const newInvoiceNo = `${moc.cwo} INV-C-${paddedNumber}`;
+    const maxNumber = Math.max(...(
+      (existingInvoices?.data || [])
+        .filter(i => i.mocId === parseInt(mocId))
+        .map(i => parseInt(i.invoiceNo.match(/INV-C-(\d+)$/)?.[1] || "0"))
+        .concat(0)
+    ));
 
-        setFormData((prev) => ({ ...prev, invoiceNo: newInvoiceNo }));
-      } finally {
-        setIsGeneratingInvoiceNo(false);
-      }
-    },
-    [mocOptions]
-  );
+    const nextNumber = maxNumber + 1;
+    const newInvoiceNo = `${moc.cwo} INV-C-${nextNumber.toString().padStart(3, "0")}`;
+    form.setValue('invoiceNo', newInvoiceNo);
+  }, [mocOptions, queryClient]);
 
   // Form Handlers
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    startTransition(async () => {
-      try {
-        if (editId && formData.invoiceStatus !== originalStatus && !formData.receiptDate) {
-          showDialog("Error", "Receipt date is required when changing status");
-          return;
-        }
+  const onSubmit = async (values: FormValues) => {
+    const invoiceData = {
+      ...values,
+      mocId: parseInt(values.mocId),
+      amount: parseFloat(values.amount),
+      vat: parseFloat(values.vat),
+      retention: parseFloat(values.retention),
+      invoiceDate: format(values.invoiceDate, "yyyy-MM-dd"),
+      receiptDate: values.receiptDate ? format(values.receiptDate, "yyyy-MM-dd") : null
+    };
 
-        const invoiceData = {
-          ...formData,
-          mocId: parseInt(formData.mocId),
-          amount: parseFloat(formData.amount),
-          vat: parseFloat(formData.vat),
-          retention: parseFloat(formData.retention),
-          invoiceDate: format(formData.invoiceDate, "yyyy-MM-dd"),
-          receiptDate: formData.receiptDate ? format(formData.receiptDate, "yyyy-MM-dd") : null,
-        };
-
-        if (editId) {
-          await updatePartialInvoice(editId, invoiceData);
-          showDialog("Success", "Invoice updated successfully!");
-        } else {
-          await addPartialInvoice(invoiceData);
-          showDialog("Success", "Invoice added successfully!");
-        }
-
-        refreshInvoices();
-        resetForm();
-      } catch (error) {
-        console.error("Form submission error:", error);
-        showDialog("Error", "An error occurred. Please try again.");
-      }
-    });
+    if (editId) {
+      updateMutation.mutate({ id: editId, values: invoiceData });
+    } else {
+      addMutation.mutate(invoiceData);
+    }
   };
 
   const handleEdit = (invoice: PartialInvoice) => {
-    setFormData({
-      mocId: invoice.mocId?.toString() || "",
-      invoiceNo: invoice.invoiceNo ?? "",
-      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate) : new Date(),
-      amount: invoice.amount?.toString() || "",
-      vat: invoice.vat?.toString() || "",
-      retention: invoice.retention?.toString() || "",
-      invoiceStatus: invoice.invoiceStatus ?? "",
-      receiptDate: invoice.receiptDate ? new Date(invoice.receiptDate) : null,
+    form.reset({
+      ...invoice,
+      mocId: invoice.mocId.toString(),
+      amount: invoice.amount.toString(),
+      vat: invoice.vat.toString(),
+      retention: invoice.retention.toString(),
+      invoiceDate: new Date(invoice.invoiceDate),
+      receiptDate: invoice.receiptDate ? new Date(invoice.receiptDate) : null
     });
-    setOriginalStatus(invoice.invoiceStatus ?? "");
+    setOriginalStatus(invoice.invoiceStatus);
     setEditId(invoice.id);
   };
 
-  const handleDelete = async (id: number) => {
-    startTransition(async () => {
-      try {
-        await deletePartialInvoice(id);
-        refreshInvoices();
-        showDialog("Success", "Invoice deleted successfully!");
-      } catch (error) {
-        console.error("Delete error:", error);
-        showDialog("Error", "Failed to delete invoice.");
-      } finally {
-        setDeleteId(null);
-      }
-    });
-  };
-
   const handleStatusChange = (value: string) => {
-    if (editId && value !== originalStatus) {
+    if (value === 'PAID') {
       setTempStatus(value);
       setShowReceiptDialog(true);
     } else {
-      setFormData({ ...formData, invoiceStatus: value });
+      form.setValue('invoiceStatus', value);
+      if (editId) form.setValue('receiptDate', null);
     }
   };
 
   const confirmReceiptDate = (date: Date) => {
-    setFormData(prev => ({
-      ...prev,
-      invoiceStatus: tempStatus,
-      receiptDate: date,
-    }));
+    form.setValue('invoiceStatus', tempStatus);
+    form.setValue('receiptDate', date);
     setShowReceiptDialog(false);
   };
 
-  // Helper Functions
-  const showDialog = (title: string, message: string) => {
-    setDialogTitle(title);
-    setDialogMessage(message);
-    setDialogOpen(true);
-  };
-
-  const refreshInvoices = async () => {
-    try {
-      const result = await db
-        .select({
-          id: partialInvoices.id,
-          mocId: partialInvoices.mocId,
-          invoiceNo: partialInvoices.invoiceNo,
-          invoiceDate: partialInvoices.invoiceDate,
-          amount: partialInvoices.amount,
-          vat: partialInvoices.vat,
-          retention: partialInvoices.retention,
-          invoiceStatus: partialInvoices.invoiceStatus,
-          receiptDate: partialInvoices.receiptDate,
-          mocNo: mocs.mocNo,
-        })
-        .from(partialInvoices)
-        .leftJoin(mocs, eq(partialInvoices.mocId, mocs.id));
-
-      const updatedInvoices = result.map((row) => ({
-        ...row,
-        mocNo: row.mocNo || "",
-        amount: parseFloat(row.amount),
-        vat: parseFloat(row.vat),
-        retention: parseFloat(row.retention),
-        invoiceStatus: row.invoiceStatus.trim().toUpperCase(),
-        receiptDate: row.receiptDate,
-      }));
-
-      setInvoices(updatedInvoices);
-    } catch (error) {
-      console.error("Refresh invoices error:", error);
-    }
-  };
-
-  const filteredInvoices = invoices.filter((invoice) => {
+  // Filtering
+  const filteredInvoices = (invoices?.data ?? []).filter((invoice) => {
     const searchLower = searchQuery.toLowerCase();
-    const invoiceDate = invoice.invoiceDate ? new Date(invoice.invoiceDate) : null;
-    const dateInRange = !startDate || !endDate || !invoiceDate
-      ? true
-      : invoiceDate >= startDate && invoiceDate <= endDate;
+    const invoiceDate = new Date(invoice.invoiceDate);
+    const dateInRange = !startDate || !endDate ? true :
+      invoiceDate >= startDate && invoiceDate <= endDate;
 
-    const matchesSearch =
-      invoice.invoiceNo?.toLowerCase().includes(searchLower) ||
-      invoice.mocNo?.toLowerCase().includes(searchLower) ||
-      invoice.invoiceDate?.toLowerCase().includes(searchLower);
-
-    return dateInRange && matchesSearch;
+    return dateInRange && (
+      invoice.invoiceNo.toLowerCase().includes(searchLower) ||
+      invoice.mocNo.toLowerCase().includes(searchLower)
+    );
   });
-
-  const resetForm = () => {
-    setFormData({
-      mocId: "",
-      invoiceNo: "",
-      invoiceDate: new Date(),
-      amount: "",
-      vat: "",
-      retention: "",
-      invoiceStatus: "",
-      receiptDate: null,
-    });
-    setEditId(null);
-  };
-
-  useEffect(() => {
-    if (formData.mocId && !editId) {
-      generateInvoiceNumber(formData.mocId);
-    }
-  }, [formData.mocId, generateInvoiceNumber, editId]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -404,174 +289,172 @@ export default function PartialInvoicesEntry() {
             {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
           </h3>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                label="MOC Number *"
-                content={
+              {/* MOC Number */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">MOC Number *</Label>
+                <div className="col-span-3">
                   <Select
-                    value={formData.mocId}
-                    onValueChange={(value) => setFormData({ ...formData, mocId: value })}
+                    value={form.watch('mocId')}
+                    onValueChange={(value) => {
+                      form.setValue('mocId', value);
+                      if (!editId) generateInvoiceNumber(value);
+                    }}
                     required
                   >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select MOC" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mocOptions.map((moc) => (
+                      {(mocOptions?.data ?? []).map((moc: MocOption) => (
                         <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm">
                           {moc.mocNo}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                }
-              />
+                </div>
+              </div>
 
-              <FormField
-                label="Invoice Number *"
-                content={
+              {/* Invoice Number */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Invoice Number *</Label>
+                <div className="col-span-3">
                   <Input
-                    id="invoiceNo"
-                    type="text"
-                    value={formData.invoiceNo}
+                    {...form.register('invoiceNo')}
                     readOnly
                     className="bg-gray-100"
-                    placeholder={
-                      isGeneratingInvoiceNo
-                        ? "Generating..."
-                        : "Select MOC to generate"
-                    }
+                    placeholder={form.watch('mocId') ? "Generating..." : "Select MOC first"}
                   />
-                }
-              />
+                </div>
+              </div>
 
-              <FormField
-                label="Invoice Date *"
-                content={
+              {/* Invoice Date */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Invoice Date *</Label>
+                <div className="col-span-3">
                   <DatePicker
-                    selected={formData.invoiceDate}
-                    onChange={(date) =>
-                      date && setFormData({ ...formData, invoiceDate: date })
-                    }
+                    selected={form.watch('invoiceDate')}
+                    onChange={(date) => date && form.setValue('invoiceDate', date)}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     dateFormat="yyyy-MM-dd"
                     required
                   />
-                }
-              />
+                </div>
+              </div>
 
-              <FormField
-                label="Amount (SAR) *"
-                content={
+              {/* Amount */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Amount (SAR) *</Label>
+                <div className="col-span-3">
                   <Input
-                    id="amount"
+                    {...form.register('amount')}
                     type="number"
                     step="0.01"
-                    value={formData.amount}
                     onChange={(e) => handleAmountChange(e.target.value)}
                     required
                   />
-                }
-              />
+                </div>
+              </div>
 
-              <FormField
-                label="VAT (SAR) *"
-                content={
+              {/* VAT */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">VAT (SAR) *</Label>
+                <div className="col-span-3">
                   <Input
-                    id="vat"
+                    {...form.register('vat')}
                     type="number"
                     step="0.01"
-                    value={formData.vat}
                     disabled
                     className="bg-gray-100"
                   />
-                }
-              />
+                </div>
+              </div>
 
-              <FormField
-                label="Retention (SAR) *"
-                content={
+              {/* Retention */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Retention (SAR) *</Label>
+                <div className="col-span-3">
                   <Input
-                    id="retention"
+                    {...form.register('retention')}
                     type="number"
                     step="0.01"
-                    value={formData.retention}
                     disabled
                     className="bg-gray-100"
                   />
-                }
-              />
+                </div>
+              </div>
             </div>
 
+            {/* Status and Actions */}
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <FormField
-                  label="Status *"
-                  content={
-                    <>
-                      <Select
-                        value={formData.invoiceStatus}
-                        onValueChange={handleStatusChange}
-                        required
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Select Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(STATUS_COLORS).map(([status, color]) => (
-                            <SelectItem
-                              key={status}
-                              value={status}
-                              className={`text-sm ${color}`}
-                            >
-                              {status}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <ReceiptDateDialog
-                        open={showReceiptDialog}
-                        onOpenChange={setShowReceiptDialog}
-                        onConfirm={confirmReceiptDate}
-                      />
-                    </>
-                  }
-                />
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Status *</Label>
+                <div className="col-span-3">
+                  <Select
+                    value={form.watch('invoiceStatus')}
+                    onValueChange={handleStatusChange}
+                    required
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(STATUS_COLORS).map(([status, color]) => (
+                        <SelectItem key={status} value={status} className={`text-sm ${color}`}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <ReceiptDateDialog
+                    open={showReceiptDialog}
+                    onOpenChange={setShowReceiptDialog}
+                    onConfirm={confirmReceiptDate}
+                  />
+                </div>
               </div>
+
               <div className="flex items-center space-x-2 justify-end">
                 {editId && (
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={resetForm}
-                    disabled={isPending}
+                    onClick={() => {
+                      form.reset();
+                      setEditId(null);
+                    }}
+                    disabled={addMutation.isPending || updateMutation.isPending}
                   >
                     Cancel
                   </Button>
                 )}
-                <Button type="submit" className="w-full md:w-auto" disabled={isPending}>
-                  {isPending ? "Processing..." : editId ? "Update Invoice" : "Add Invoice"}
+                <Button
+                  type="submit"
+                  className="w-full md:w-auto"
+                  disabled={addMutation.isPending || updateMutation.isPending}
+                >
+                  {(addMutation.isPending || updateMutation.isPending) ? (
+                    <Spinner />
+                  ) : editId ? "Update Invoice" : "Add Invoice"}
                 </Button>
 
                 <div className="flex items-center space-x-2">
                   <Input
                     placeholder="Search invoices..."
                     value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setDateRange([null, null]);
-                    }}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-48"
                   />
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline">
                         <CalendarIcon className="h-4 w-4 mr-2" />
-                        {startDate ? 
-                          (endDate ? 
-                            `${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd')}` : 
-                            format(startDate, 'MMM dd')) : 
+                        {startDate ?
+                          (endDate ?
+                            `${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd')}` :
+                            format(startDate, 'MMM dd')) :
                           "Select Date Range"}
                       </Button>
                     </PopoverTrigger>
@@ -579,10 +462,7 @@ export default function PartialInvoicesEntry() {
                       <Calendar
                         mode="range"
                         selected={{ from: startDate || undefined, to: endDate || undefined }}
-                        onSelect={(range) => {
-                          setDateRange([range?.from || null, range?.to || null]);
-                          setSearchQuery("");
-                        }}
+                        onSelect={(range) => setDateRange([range?.from || null, range?.to || null])}
                         numberOfMonths={2}
                         className="rounded-md border"
                       />
@@ -593,161 +473,109 @@ export default function PartialInvoicesEntry() {
             </div>
           </form>
 
-          <InvoiceTable
-            invoices={filteredInvoices}
-            isLoading={isLoading}
-            isPending={isPending}
-            onEdit={handleEdit}
-            onDelete={setDeleteId}
-            refreshInvoices={refreshInvoices}
-          />
+          {/* Invoice Table */}
+          <div className="mt-8 flex-1 flex flex-col">
+            <div className="border rounded-lg overflow-hidden flex-1">
+              <div className="relative h-full">
+                <div className="absolute inset-0 overflow-auto">
+                  <Table className="border-collapse">
+                    <TableHeader className="sticky top-0 bg-gray-50 shadow-sm z-10">
+                      <TableRow className="h-8">
+                        <TableHead className="font-semibold text-gray-700 py-2">MOC Number</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-2">Invoice No</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-2">Inv. Date</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-2">Amount</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-2">Receipt Date</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-2">Status</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-2">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
 
-          <MessageDialog
-            open={dialogOpen}
-            title={dialogTitle}
-            message={dialogMessage}
-            onClose={() => setDialogOpen(false)}
-          />
-
-          <DeleteConfirmationDialog
-            deleteId={deleteId}
-            isPending={isPending}
-            onCancel={() => setDeleteId(null)}
-            onConfirm={handleDelete}
-          />
+                    <TableBody>
+                      {isLoading ? (
+                        Array(5).fill(0).map((_, i) => <SkeletonRow key={i} />)
+                      ) : (
+                        filteredInvoices.map((invoice) => (
+                          <InvoiceRow
+                            key={invoice.id}
+                            invoice={invoice}
+                            onEdit={handleEdit}
+                            onDelete={deleteMutation.mutate}
+                          />
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {(addMutation.isPending || updateMutation.isPending || deleteMutation.isPending) && (
+                  <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
+                    <Spinner />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Sub-components
-const FormField = ({ label, content }: { label: string; content: React.ReactNode }) => (
-  <div className="grid grid-cols-4 items-center gap-4">
-    <Label className="text-sm font-medium text-gray-700">{label}</Label>
-    <div className="col-span-3">{content}</div>
-  </div>
-);
-
-const InvoiceTable = ({
-  invoices,
-  isLoading,
-  isPending,
-  onEdit,
-  onDelete,
-  refreshInvoices,
-}: {
-  invoices: PartialInvoice[];
-  isLoading: boolean;
-  isPending: boolean;
-  onEdit: (invoice: PartialInvoice) => void;
-  onDelete: (id: number) => void;
-  refreshInvoices: () => void;
-}) => (
-  <div className="mt-8 flex-1 flex flex-col">
-    <div className="border rounded-lg overflow-hidden flex-1">
-      <div className="relative h-full">
-        <div className="absolute inset-0 overflow-auto">
-          <Table className="border-collapse">
-            <TableHeader className="sticky top-0 bg-gray-50 shadow-sm z-10">
-              <TableRow className="h-8">
-                <TableHead className="font-semibold text-gray-700 py-2">MOC Number</TableHead>
-                <TableHead className="font-semibold text-gray-700 py-2">Invoice No</TableHead>
-                <TableHead className="font-semibold text-gray-700 py-2">Inv. Sub. Date</TableHead>
-                <TableHead className="font-semibold text-gray-700 py-2">Amount</TableHead>
-                <TableHead className="font-semibold text-gray-700 py-2">Receipt Date</TableHead>
-                <TableHead className="font-semibold text-gray-700 py-2">Status</TableHead>
-                <TableHead className="font-semibold text-gray-700 py-2">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {isLoading
-                ? Array(5).fill(0).map((_, i) => <SkeletonRow key={i} />)
-                : invoices.map((invoice) => (
-                  <InvoiceRow
-                    key={invoice.id}
-                    invoice={invoice}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    refreshInvoices={refreshInvoices}
-                  />
-                ))}
-            </TableBody>
-          </Table>
-        </div>
-        {(isPending || isLoading) && (
-          <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
-            <Spinner />
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-);
-
+// Invoice Row Component
 const InvoiceRow = ({
   invoice,
   onEdit,
-  onDelete,
-  refreshInvoices,
+  onDelete
 }: {
   invoice: PartialInvoice;
   onEdit: (invoice: PartialInvoice) => void;
   onDelete: (id: number) => void;
-  refreshInvoices: () => void;
 }) => {
-  const [isPending, startTransition] = useTransition();
   const [showDateDialog, setShowDateDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
+  const queryClient = useQueryClient();
+
+  const updateStatus = useMutation({
+    mutationFn: (data: { id: number, status: string, date?: Date }) =>
+      updatePartialInvoice(data.id, {
+        invoiceStatus: data.status,
+        receiptDate: data.date ? format(data.date, "yyyy-MM-dd") : null
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partialInvoices'] });
+      toast.success("Status updated successfully!");
+    }
+  });
 
   const handleStatusSelect = (newStatus: string) => {
     if (newStatus === 'PAID') {
       setSelectedStatus(newStatus);
       setShowDateDialog(true);
     } else {
-      startTransition(async () => {
-        await updatePartialInvoice(invoice.id, { invoiceStatus: newStatus });
-        refreshInvoices();
-        toast.success(`Status updated to ${newStatus}`);
-      });
+      updateStatus.mutate({ id: invoice.id, status: newStatus });
     }
-  };
-
-  const handleDateConfirm = (date: Date) => {
-    startTransition(async () => {
-      await updatePartialInvoice(invoice.id, { 
-        invoiceStatus: selectedStatus,
-        receiptDate: format(date, "yyyy-MM-dd")
-      });
-      refreshInvoices();
-      toast.success(`Marked as PAID with receipt date ${format(date, 'MMM dd, yyyy')}`);
-      setShowDateDialog(false);
-    });
   };
 
   return (
     <>
       <TableRow className="h-8 hover:bg-gray-50">
-        <TableCell className="py-1">{invoice.mocNo}</TableCell>
-        <TableCell className="p-1">{invoice.invoiceNo}</TableCell>
-        <TableCell className="p-1">
-          {invoice.invoiceDate
-            ? new Date(invoice.invoiceDate).toLocaleDateString()
-            : "N/A"}
+        <TableCell>{invoice.mocNo}</TableCell>
+        <TableCell>{invoice.invoiceNo}</TableCell>
+        <TableCell>
+          {new Date(invoice.invoiceDate).toLocaleDateString()}
         </TableCell>
         <TableCell className="font-medium">
-          {invoice.amount?.toFixed(2) || "0.00"}
+          {invoice.amount.toFixed(2)}
         </TableCell>
-        <TableCell className="p-1">
-          {invoice.receiptDate
-            ? new Date(invoice.receiptDate).toLocaleDateString()
-            : "N/A"}
+        <TableCell>
+          {invoice.receiptDate ?
+            new Date(invoice.receiptDate).toLocaleDateString() : "N/A"}
         </TableCell>
-        <TableCell className="p-1">
+        <TableCell>
           <Select
             value={invoice.invoiceStatus}
             onValueChange={handleStatusSelect}
+            disabled={updateStatus.isPending}
           >
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Select Status" />
@@ -761,7 +589,7 @@ const InvoiceRow = ({
             </SelectContent>
           </Select>
         </TableCell>
-        <TableCell className="p-1 space-x-2">
+        <TableCell className="space-x-2">
           <Button variant="outline" size="icon" onClick={() => onEdit(invoice)}>
             <Edit className="h-3 w-3" />
           </Button>
@@ -774,20 +602,28 @@ const InvoiceRow = ({
       <ReceiptDateDialog
         open={showDateDialog}
         onOpenChange={setShowDateDialog}
-        onConfirm={handleDateConfirm}
+        onConfirm={(date) => updateStatus.mutate({
+          id: invoice.id,
+          status: selectedStatus,
+          date
+        })}
+        isLoading={updateStatus.isPending}
       />
     </>
   );
 };
 
+// Receipt Date Dialog
 const ReceiptDateDialog = ({
   open,
   onOpenChange,
   onConfirm,
+  isLoading
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (date: Date) => void;
+  isLoading?: boolean;
 }) => {
   const [date, setDate] = useState<Date | undefined>(new Date());
 
@@ -797,7 +633,7 @@ const ReceiptDateDialog = ({
         <DialogHeader>
           <DialogTitle>Select Receipt Date</DialogTitle>
           <DialogDescription>
-            Please select the receipt date for the status change
+            Please select the receipt date for marking as PAID
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -812,66 +648,9 @@ const ReceiptDateDialog = ({
           <Button
             type="button"
             onClick={() => date && onConfirm(date)}
+            disabled={isLoading}
           >
-            Confirm
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const MessageDialog = ({
-  open,
-  title,
-  message,
-  onClose,
-}: {
-  open: boolean;
-  title: string;
-  message: string;
-  onClose: () => void;
-}) => (
-  <Dialog open={open} onOpenChange={onClose}>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{message}</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <Button onClick={onClose}>OK</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
-
-const DeleteConfirmationDialog = ({
-  deleteId,
-  isPending,
-  onCancel,
-  onConfirm,
-}: {
-  deleteId: number | null;
-  isPending: boolean;
-  onCancel: () => void;
-  onConfirm: (id: number) => void;
-}) => {
-  if (deleteId === null) return null;
-  return (
-    <Dialog open={true} onOpenChange={onCancel}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Confirm Delete</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete this invoice?
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={() => onConfirm(deleteId)} disabled={isPending}>
-            {isPending ? "Deleting..." : "Delete"}
+            {isLoading ? <Spinner /> : "Confirm"}
           </Button>
         </DialogFooter>
       </DialogContent>
