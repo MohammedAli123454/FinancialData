@@ -253,129 +253,115 @@ export default function PartialInvoicesEntry() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* MOC Number */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">MOC Number *</Label>
-                <div className="col-span-3">
-                  <Select
-                    value={form.watch("mocId")}
-                    onValueChange={(value) => {
-                      form.setValue("mocId", value);
-                      if (!editId) generateInvoiceNumber(value);
-                    }}
-                    required
-                  >
-                    <SelectTrigger className="h-9 text-gray-700">
-                      <SelectValue placeholder="Select MOC" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(mocOptions?.data ?? []).map((moc: MocOption) => (
-                        <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm text-gray-700">
-                          {moc.mocNo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Select MOC Number</Label>
+                <Select
+                  value={form.watch("mocId")}
+                  onValueChange={(value) => {
+                    form.setValue("mocId", value);
+                    if (!editId) generateInvoiceNumber(value);
+                  }}
+                  required
+                >
+                  <SelectTrigger className="h-9 text-gray-700">
+                    <SelectValue placeholder="Select MOC" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(mocOptions?.data ?? []).map((moc: MocOption) => (
+                      <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm text-gray-700">
+                        {moc.mocNo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {/* Invoice Number */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Invoice Number *</Label>
-                <div className="col-span-3">
-                  <Input
-                    {...form.register("invoiceNo")}
-                    readOnly
-                    className="bg-gray-100 text-gray-700"
-                    placeholder={form.watch("mocId") ? "Generating..." : "Select MOC first"}
-                  />
-                </div>
+              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Invoice Number</Label>
+                <Input
+                  {...form.register("invoiceNo")}
+                  readOnly
+                  className="bg-gray-100 text-gray-700"
+                  placeholder={form.watch("mocId") ? "Generating..." : "Select MOC first"}
+                />
               </div>
-              {/* Invoice Date */}
-              <div className="grid grid-cols-4 items-center gap-4">
+            {/* Invoice Date */}  
+              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700">Select Invoice Date</Label>
-                <div className="col-span-3">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full text-gray-700">
-                        {form.watch("invoiceDate")
-                          ? format(form.watch("invoiceDate"), "yyyy-MM-dd")
-                          : "Select Date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="p-0">
-                      <Calendar
-                        mode="single"
-                        selected={form.watch("invoiceDate")}
-                        onSelect={(date) => date && form.setValue("invoiceDate", date)}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-700"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full text-gray-700">
+                      {form.watch("invoiceDate")
+                        ? format(form.watch("invoiceDate"), "yyyy-MM-dd")
+                        : "Select Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0">
+                    <Calendar
+                      mode="single"
+                      selected={form.watch("invoiceDate")}
+                      onSelect={(date) => date && form.setValue("invoiceDate", date)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-700"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               {/* Amount */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Amount (SAR) *</Label>
-                <div className="col-span-3">
-                  <Input
-                    {...form.register("amount")}
-                    type="number"
-                    step="0.01"
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    required
-                    className="text-gray-700"
-                  />
-                </div>
+              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Enter Invoive Amount</Label>
+                <Input
+                  {...form.register("amount")}
+                  type="number"
+                  step="0.01"
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  required
+                  className="text-gray-700"
+                />
               </div>
               {/* VAT */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">VAT (SAR) *</Label>
-                <div className="col-span-3">
-                  <Input
-                    {...form.register("vat")}
-                    type="number"
-                    step="0.01"
-                    disabled
-                    className="bg-gray-100 text-gray-700"
-                  />
-                </div>
+              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Value Added Tax(VAT)</Label>
+                <Input
+                  {...form.register("vat")}
+                  type="number"
+                  step="0.01"
+                  disabled
+                  className="bg-gray-100 text-gray-700"
+                />
               </div>
               {/* Retention */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Retention (SAR) *</Label>
-                <div className="col-span-3">
-                  <Input
-                    {...form.register("retention")}
-                    type="number"
-                    step="0.01"
-                    disabled
-                    className="bg-gray-100 text-gray-700"
-                  />
-                </div>
+              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Retention Value</Label>
+                <Input
+                  {...form.register("retention")}
+                  type="number"
+                  step="0.01"
+                  disabled
+                  className="bg-gray-100 text-gray-700"
+                />
               </div>
+
               {/* Status */}
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Select Status</Label>
-                <div className="col-span-3">
-                  <Select
-                    value={form.watch("invoiceStatus")}
-                    onValueChange={(value) => form.setValue("invoiceStatus", value)}
-                    required
-                  >
-                    <SelectTrigger className="h-9 text-gray-700">
-                      <SelectValue placeholder="Select Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
-                        <SelectItem key={status} value={status} className="text-sm text-gray-700">
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                <Label className="text-sm font-medium text-gray-700">Select Invoice Status</Label>
+                <Select
+                  value={form.watch("invoiceStatus")}
+                  onValueChange={(value) => form.setValue("invoiceStatus", value)}
+                  required
+                >
+                  <SelectTrigger className="h-9 text-gray-700">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
+                      <SelectItem key={status} value={status} className="text-sm text-gray-700">
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-            {/* Actions */}
+                 {/* Actions */}
             <div className="flex items-center space-x-2 justify-end mb-4">
               {editId && (
                 <Button
@@ -443,7 +429,10 @@ export default function PartialInvoicesEntry() {
                 </Popover>
               </div>
             </div>
+            </div>
+         
           </form>
+
           {/* Invoice Table */}
           <div className="mt-8 flex-1 flex flex-col">
             <div className="border rounded-lg overflow-hidden flex-1">

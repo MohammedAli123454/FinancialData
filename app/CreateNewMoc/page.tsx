@@ -1,17 +1,17 @@
 "use client"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from 'zod';
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify';
 import DatePicker from "react-datepicker";
 import Select from "react-select";
-import { 
-  addMOC, 
-  updateMOC, 
-  deleteMOC, 
-  getMOCs, 
+import {
+  addMOC,
+  updateMOC,
+  deleteMOC,
+  getMOCs,
   type MOC
 } from "@/app/actions/newMocActions";
 import { Button } from "@/components/ui/button";
@@ -171,11 +171,11 @@ export default function MOCForm() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMounted, setIsMounted] = useState(false); // Added mount check
 
-  const { 
-    register, 
-    handleSubmit, 
-    reset, 
-    setValue, 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
     control,
     formState: { errors }
   } = useForm<MocFormSchema>({
@@ -211,7 +211,7 @@ export default function MOCForm() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: { id: number; values: Partial<MocFormSchema> }) => 
+    mutationFn: (data: { id: number; values: Partial<MocFormSchema> }) =>
       updateMOC(data.id, data.values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mocs'] });
@@ -319,18 +319,18 @@ export default function MOCForm() {
                 <div className="grid grid-cols-[150px,1fr] items-center gap-4">
                   <Label>Category</Label>
                   <div>
-                  <Controller
-  name="category"
-  control={control}
-  render={({ field }) => (
-    <Select 
-      {...field}
-      options={categoryOptions}
-      value={categoryOptions.find(option => option.value === field.value)}
-      onChange={(selected) => field.onChange(selected?.value)}
-    />
-  )}
-/>
+                    <Controller
+                      name="category"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          {...field}
+                          options={categoryOptions}
+                          value={categoryOptions.find(option => option.value === field.value)}
+                          onChange={(selected) => field.onChange(selected?.value)}
+                        />
+                      )}
+                    />
                     {errors.category && (
                       <span className="text-red-500 text-sm">{errors.category.message}</span>
                     )}
@@ -426,12 +426,12 @@ export default function MOCForm() {
                       Cancel
                     </Button>
                   )}
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={addMutation.isPending || updateMutation.isPending}
                   >
-                    {addMutation.isPending || updateMutation.isPending 
-                      ? "Processing..." 
+                    {addMutation.isPending || updateMutation.isPending
+                      ? "Processing..."
                       : editId ? "Update MOC" : "Create MOC"}
                   </Button>
                 </div>
