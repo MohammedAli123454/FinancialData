@@ -4,27 +4,36 @@ import { partialInvoices, mocs } from "../config/schema";
 import { eq } from "drizzle-orm";
 import { z } from 'zod';
 
-// Interface definitions
-export interface CreatePartialInvoice {
-  mocId: number;
-  invoiceNo: string;
-  invoiceDate: string;
-  amount: number;
-  vat: number;
-  retention: number;
-  invoiceStatus: string;
-}
+// Zod Schemas for Validation
+const createPartialInvoiceSchema = z.object({
+  mocId: z.number(),
+  invoiceNo: z.string(),
+  invoiceDate: z.string(),
+  amount: z.number(),
+  vat: z.number(),
+  retention: z.number(),
+  invoiceStatus: z.string(),
+});
 
-export interface UpdatePartialInvoice {
-  mocId?: number;
-  invoiceNo?: string;
-  invoiceDate?: string;
-  amount?: number;
-  vat?: number;
-  retention?: number;
-  invoiceStatus?: string;
-  receiptDate?: string | null;
-}
+const updatePartialInvoiceSchema = z.object({
+  mocId: z.number().optional(),
+  invoiceNo: z.string().optional(),
+  invoiceDate: z.string().optional(),
+  amount: z.number().optional(),
+  vat: z.number().optional(),
+  retention: z.number().optional(),
+  invoiceStatus: z.string().optional(),
+  receiptDate: z.string().nullable().optional(),
+}).refine((data) => {
+  if (data.invoiceStatus === 'PAID') {
+    return data.receiptDate !== null && data.receiptDate !== undefined && data.receiptDate.trim() !== "";
+  }
+  return true;
+}, { message: "Receipt date is required for PAID status", path: ['receiptDate'] });
+
+// Interface definitions (optional if you want to derive types from Zod)
+export type CreatePartialInvoice = z.infer<typeof createPartialInvoiceSchema>;
+export type UpdatePartialInvoice = z.infer<typeof updatePartialInvoiceSchema>;
 
 export interface PartialInvoice {
   id: number;
@@ -97,7 +106,10 @@ export async function getPartialInvoices() {
 // Mutation functions
 export async function addPartialInvoice(data: CreatePartialInvoice) {
   try {
-    const { amount, vat, retention, ...rest } = data;
+    // Validate input using Zod
+    const parsedData = createPartialInvoiceSchema.parse(data);
+
+    const { amount, vat, retention, ...rest } = parsedData;
     const payable = amount + vat - retention;
     
     await db.insert(partialInvoices).values({
@@ -117,25 +129,24 @@ export async function addPartialInvoice(data: CreatePartialInvoice) {
 
 export async function updatePartialInvoice(id: number, data: UpdatePartialInvoice) {
   try {
-    const updateData: Record<string, any> = { ...data };
+    // Validate input using Zod
+    const parsedData = updatePartialInvoiceSchema.parse(data);
+    const updateData: Record<string, any> = { ...parsedData };
 
     // Manage receipt date based on status
-    if (data.invoiceStatus) {
-      if (data.invoiceStatus === 'PAID') {
-        if (!data.receiptDate) {
-          throw new Error('Receipt date is required for PAID status');
-        }
-        updateData.receiptDate = data.receiptDate;
+    if (parsedData.invoiceStatus) {
+      if (parsedData.invoiceStatus === 'PAID') {
+        updateData.receiptDate = parsedData.receiptDate;
       } else {
         updateData.receiptDate = null;
       }
     }
 
-    // Handle amount calculations
-    if (data.amount !== undefined || data.vat !== undefined || data.retention !== undefined) {
-      const amount = data.amount ?? 0;
-      const vat = data.vat ?? 0;
-      const retention = data.retention ?? 0;
+    // Handle amount calculations if any of the monetary values are updated
+    if (parsedData.amount !== undefined || parsedData.vat !== undefined || parsedData.retention !== undefined) {
+      const amount = parsedData.amount ?? 0;
+      const vat = parsedData.vat ?? 0;
+      const retention = parsedData.retention ?? 0;
       updateData.payable = (amount + vat - retention).toString();
     }
 
