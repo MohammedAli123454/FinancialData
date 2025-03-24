@@ -231,9 +231,11 @@ export default function PartialInvoicesEntry() {
   const [editId, setEditId] = useState<number | null>(null);
   const [filters, setFilters] = useState<FilterValues>(defaultFilters);
   const [statusDialogInvoice, setStatusDialogInvoice] = useState<PartialInvoice | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<PartialInvoice | null>(null);
   const [newStatus, setNewStatus] = useState("PMD");
   const [newReceiptDate, setNewReceiptDate] = useState<Date | null>(null);
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
+  const [isAddingNewInvoice, setIsAddingNewInvoice] = useState(false);
   const [startDate, endDate] = filters.dateRange;
 
   const form = useForm<FormValues>({
@@ -267,6 +269,7 @@ export default function PartialInvoicesEntry() {
         queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
         toast.success("Invoice added successfully!");
         form.reset();
+        setIsAddingNewInvoice(false);
       }
     },
   });
@@ -340,6 +343,17 @@ export default function PartialInvoicesEntry() {
   );
 
   const onSubmit = async (values: FormValues) => {
+    // If adding a new invoice (not editing) check for duplicate invoice number
+    if (!editId) {
+      const duplicate = invoices?.data?.find(
+        (inv) => inv.invoiceNo === values.invoiceNo
+      );
+      if (duplicate) {
+        toast.error("Invoice cannot be saved as the current invoice number is already available in the database");
+        return;
+      }
+    }
+
     const invoiceData = {
       ...values,
       mocId: parseInt(values.mocId),
@@ -365,6 +379,7 @@ export default function PartialInvoicesEntry() {
       receiptDate: invoice.receiptDate ? new Date(invoice.receiptDate) : null,
     });
     setEditId(invoice.id);
+    setIsAddingNewInvoice(true);
   };
 
   const clearFilters = () => setFilters(defaultFilters);
@@ -387,180 +402,194 @@ export default function PartialInvoicesEntry() {
       <ToastContainer position="top-center" autoClose={3000} />
       <div className="flex-grow max-w-7xl mx-auto w-full px-4 py-4">
         <div className="bg-white rounded-lg shadow-lg p-2 h-full flex flex-col">
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">
-            {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
-          </h3>
-          
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Select MOC Number</Label>
-                <Select
-                  value={form.watch("mocId")}
-                  onValueChange={(value) => {
-                    form.setValue("mocId", value, { shouldValidate: true });
-                    if (!editId) generateInvoiceNumber(value);
-                  }}
-                  required
-                  disabled={mocLoading}
-                >
-                  <SelectTrigger className="h-9 text-gray-700">
-                    <SelectValue placeholder={
-                      mocLoading ? "Loading MOCs..." : 
-                      mocOptions?.success ? "Select MOC" : "Error loading MOCs"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mocLoading && (
-                      <SelectItem disabled value="loading">
-                        Loading MOC options...
-                      </SelectItem>
-                    )}
-                    {!mocLoading && !mocOptions?.success && (
-                      <SelectItem disabled value="error" className="text-red-500">
-                        {mocOptions?.message || "Error loading MOC options"}
-                      </SelectItem>
-                    )}
-                    {mocOptions?.success && mocOptions.data?.map((moc: MocOption) => (
-                      <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm text-gray-700">
-                        {moc.mocNo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Invoice Number</Label>
-                <Input
-                  {...form.register("invoiceNo")}
-                  readOnly
-                  className="bg-gray-100 text-gray-700"
-                  placeholder={form.watch("mocId") ? "Generating..." : "Select MOC first"}
-                />
-              </div>
-
-              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Select Invoice Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full text-gray-700">
-                      {form.watch("invoiceDate")
-                        ? format(form.watch("invoiceDate"), "yyyy-MM-dd")
-                        : "Select Date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-0">
-                    <Calendar
-                      mode="single"
-                      selected={form.watch("invoiceDate")}
-                      onSelect={(date) => date && form.setValue("invoiceDate", date, { shouldValidate: true })}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-700"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Enter Invoice Amount</Label>
-                <Input
-                  {...form.register("amount")}
-                  type="number"
-                  step="0.01"
-                  onChange={(e) => handleAmountChange(e.target.value)}
-                  required
-                  className="text-gray-700"
-                />
-              </div>
-
-              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Value Added Tax(VAT)</Label>
-                <Input
-                  {...form.register("vat")}
-                  type="number"
-                  step="0.01"
-                  disabled
-                  className="bg-gray-100 text-gray-700"
-                />
-              </div>
-
-              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Retention Value</Label>
-                <Input
-                  {...form.register("retention")}
-                  type="number"
-                  step="0.01"
-                  disabled
-                  className="bg-gray-100 text-gray-700"
-                />
-              </div>
-
-              <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Select Invoice Status</Label>
-                <Select
-                  value={form.watch("invoiceStatus")}
-                  onValueChange={(value) => form.setValue("invoiceStatus", value, { shouldValidate: true })}
-                  required
-                >
-                  <SelectTrigger className="h-9 text-gray-700">
-                    <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
-                      <SelectItem key={status} value={status} className="text-sm text-gray-700">
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center space-x-2 justify-end">
-              {editId && (
-  <Button
-    type="button"
-    variant="outline"
-    onClick={() => { 
-      form.reset({
-        mocId: "",
-        invoiceNo: "",
-        invoiceDate: new Date(),
-        amount: "",
-        vat: "",
-        retention: "",
-        invoiceStatus: "",
-        receiptDate: null,
-      });
-      form.trigger();
-      setEditId(null);
-    }}
-    disabled={addMutation.isPending || updateMutation.isPending}
-  >
-    Cancel
-  </Button>
-)}
-                <Button
-                  type="submit"
-                  disabled={
-                    addMutation.isPending || 
-                    updateMutation.isPending || 
-                    !form.formState.isValid
-                  }
-                >
-                  {addMutation.isPending || updateMutation.isPending ? (
-                    <Loader2 className="animate-spin h-5 w-5" />
-                  ) : editId ? (
-                    "Update Invoice"
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Invoice
-                    </>
-                  )}
-                </Button>
-              </div>
+          {/* Top Add New Invoice Button (visible when not adding or editing) */}
+          {!isAddingNewInvoice && !editId && (
+            <div className="mb-4">
+              <Button onClick={() => {
+                form.reset();
+                setIsAddingNewInvoice(true);
+              }}>
+                <Plus className="h-4 w-4 mr-2" /> Add New Invoice
+              </Button>
             </div>
-          </form>
+          )}
+
+          {/* Show form only if adding new invoice or editing an invoice */}
+          {(isAddingNewInvoice || editId) && (
+            <>
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">
+                {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
+              </h3>
+              
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                    <Label className="text-sm font-medium text-gray-700">Select MOC Number</Label>
+                    <Select
+                      value={form.watch("mocId")}
+                      onValueChange={(value) => {
+                        form.setValue("mocId", value, { shouldValidate: true });
+                        if (!editId) generateInvoiceNumber(value);
+                      }}
+                      required
+                      disabled={mocLoading}
+                    >
+                      <SelectTrigger className="h-9 text-gray-700">
+                        <SelectValue placeholder={
+                          mocLoading ? "Loading MOCs..." : 
+                          mocOptions?.success ? "Select MOC" : "Error loading MOCs"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mocLoading && (
+                          <SelectItem disabled value="loading">
+                            Loading MOC options...
+                          </SelectItem>
+                        )}
+                        {!mocLoading && !mocOptions?.success && (
+                          <SelectItem disabled value="error" className="text-red-500">
+                            {mocOptions?.message || "Error loading MOC options"}
+                          </SelectItem>
+                        )}
+                        {mocOptions?.success && mocOptions.data?.map((moc: MocOption) => (
+                          <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm text-gray-700">
+                            {moc.mocNo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                    <Label className="text-sm font-medium text-gray-700">Invoice Number</Label>
+                    <Input
+                      {...form.register("invoiceNo")}
+                      readOnly
+                      className="bg-gray-100 text-gray-700"
+                      placeholder={form.watch("mocId") ? "Generating..." : "Select MOC first"}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                    <Label className="text-sm font-medium text-gray-700">Select Invoice Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full text-gray-700">
+                          {form.watch("invoiceDate")
+                            ? format(form.watch("invoiceDate"), "yyyy-MM-dd")
+                            : "Select Date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-0">
+                        <Calendar
+                          mode="single"
+                          selected={form.watch("invoiceDate")}
+                          onSelect={(date) => date && form.setValue("invoiceDate", date, { shouldValidate: true })}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-700"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                    <Label className="text-sm font-medium text-gray-700">Enter Invoice Amount</Label>
+                    <Input
+                      {...form.register("amount")}
+                      type="number"
+                      step="0.01"
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      required
+                      className="text-gray-700"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                    <Label className="text-sm font-medium text-gray-700">Value Added Tax(VAT)</Label>
+                    <Input
+                      {...form.register("vat")}
+                      type="number"
+                      step="0.01"
+                      disabled
+                      className="bg-gray-100 text-gray-700"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                    <Label className="text-sm font-medium text-gray-700">Retention Value</Label>
+                    <Input
+                      {...form.register("retention")}
+                      type="number"
+                      step="0.01"
+                      disabled
+                      className="bg-gray-100 text-gray-700"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                    <Label className="text-sm font-medium text-gray-700">Select Invoice Status</Label>
+                    <Select
+                      value={form.watch("invoiceStatus")}
+                      onValueChange={(value) => form.setValue("invoiceStatus", value, { shouldValidate: true })}
+                      required
+                    >
+                      <SelectTrigger className="h-9 text-gray-700">
+                        <SelectValue placeholder="Select Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
+                          <SelectItem key={status} value={status} className="text-sm text-gray-700">
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        form.reset({
+                          mocId: "",
+                          invoiceNo: "",
+                          invoiceDate: new Date(),
+                          amount: "",
+                          vat: "",
+                          retention: "",
+                          invoiceStatus: "",
+                          receiptDate: null,
+                        });
+                        form.trigger();
+                        setEditId(null);
+                        setIsAddingNewInvoice(false);
+                      }}
+                      disabled={addMutation.isPending || updateMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={
+                        addMutation.isPending || 
+                        updateMutation.isPending || 
+                        !form.formState.isValid
+                      }
+                    >
+                      {addMutation.isPending || updateMutation.isPending ? (
+                        <Loader2 className="animate-spin h-5 w-5" />
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Save Invoice
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
 
           <div className="mt-8 flex-1 flex flex-col">
             <div className="flex justify-between items-center mb-4">
@@ -629,8 +658,11 @@ export default function PartialInvoicesEntry() {
                         <Button variant="outline" size="icon" onClick={() => handleEdit(invoice)}>
                           <Edit className="h-3 w-3" />
                         </Button>
-                        <Button variant="destructive" size="icon" 
-                          onClick={() => deleteMutation.mutate(invoice.id)}>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => setInvoiceToDelete(invoice)}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </TableCell>
@@ -699,6 +731,36 @@ export default function PartialInvoicesEntry() {
                 }}
               >
                 Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {invoiceToDelete && (
+        <Dialog open onOpenChange={() => setInvoiceToDelete(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Invoice</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this invoice?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setInvoiceToDelete(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  deleteMutation.mutate(invoiceToDelete.id, {
+                    onSettled: () => setInvoiceToDelete(null),
+                  });
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : "Confirm"}
               </Button>
             </DialogFooter>
           </DialogContent>
