@@ -41,17 +41,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2, CalendarIcon, Loader2 } from "lucide-react";
+import { Edit, Trash2, CalendarIcon, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import "react-toastify/dist/ReactToastify.css";
 
-// Zod Schema
 const formSchema = z.object({
   mocId: z.string().min(1, "MOC is required"),
   invoiceNo: z.string().min(1, "Invoice number is required"),
   invoiceDate: z.date(),
-  amount: z.string().min(1, "Amount is required"),
+  amount: z.string()
+    .min(1, "Amount is required")
+    .refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
   vat: z.string(),
   retention: z.string(),
   invoiceStatus: z.string().min(1, "Status is required"),
@@ -84,15 +85,156 @@ interface PartialInvoice {
   receiptDate: string | null;
 }
 
+interface FilterValues {
+  search: string;
+  cwo: string;
+  moc: string;
+  status: string;
+  dateRange: [Date | null, Date | null];
+}
+
+const defaultFilters: FilterValues = {
+  search: "",
+  cwo: "",
+  moc: "all",
+  status: "all",
+  dateRange: [null, null],
+};
+
+interface FilterDialogProps {
+  open: boolean;
+  onClose: () => void;
+  initialFilters: FilterValues;
+  mocOptions: MocOption[];
+  onApply: (filters: FilterValues) => void;
+}
+
+function FilterDialog({ open, onClose, initialFilters, mocOptions, onApply }: FilterDialogProps) {
+  const [localFilters, setLocalFilters] = useState<FilterValues>(initialFilters);
+  const { search, cwo, moc, status, dateRange } = localFilters;
+  const [startDate, endDate] = dateRange;
+
+  const clearLocalFilters = () => {
+    setLocalFilters(defaultFilters);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Filter Invoices</DialogTitle>
+          <DialogDescription>
+            Enter filter criteria including search term, CWO, MOC number, status and a date range.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">Search Term</Label>
+            <Input
+              placeholder="Search by invoice or MOC number..."
+              value={search}
+              onChange={(e) => setLocalFilters({ ...localFilters, search: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">CWO Number</Label>
+            <Input
+              placeholder="Enter CWO number..."
+              value={cwo}
+              onChange={(e) => setLocalFilters({ ...localFilters, cwo: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">MOC Number</Label>
+            <Select
+              value={moc}
+              onValueChange={(value) => setLocalFilters({ ...localFilters, moc: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select MOC" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {mocOptions.map((mocOption) => (
+                  <SelectItem key={mocOption.id} value={mocOption.mocNo}>
+                    {mocOption.mocNo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">Invoice Status</Label>
+            <Select
+              value={status}
+              onValueChange={(value) => setLocalFilters({ ...localFilters, status: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {["PMD", "PMT", "FINANCE", "PAID"].map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">Date Range</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline">
+                  {startDate
+                    ? endDate
+                      ? `${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd")}`
+                      : format(startDate, "MMM dd")
+                    : "Select Date Range"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  selected={{ from: startDate || undefined, to: endDate || undefined }}
+                  onSelect={(range) =>
+                    setLocalFilters({
+                      ...localFilters,
+                      dateRange: [range?.from || null, range?.to || null],
+                    })
+                  }
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+        <DialogFooter className="space-x-2">
+          <Button variant="outline" onClick={clearLocalFilters}>
+            Clear Filters
+          </Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => { onApply(localFilters); onClose(); }}>
+            Apply Filters
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PartialInvoicesEntry() {
   const queryClient = useQueryClient();
   const [editId, setEditId] = useState<number | null>(null);
-  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<FilterValues>(defaultFilters);
   const [statusDialogInvoice, setStatusDialogInvoice] = useState<PartialInvoice | null>(null);
   const [newStatus, setNewStatus] = useState("PMD");
   const [newReceiptDate, setNewReceiptDate] = useState<Date | null>(null);
-  const [startDate, endDate] = dateRange;
+  const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
+  const [startDate, endDate] = filters.dateRange;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -108,44 +250,47 @@ export default function PartialInvoicesEntry() {
     },
   });
 
-  const { data: mocOptions } = useQuery<ApiResponse<MocOption[]>>({
+  const { data: mocOptions, isLoading: mocLoading } = useQuery<ApiResponse<MocOption[]>>({
     queryKey: ["mocOptions"],
     queryFn: getMocOptions,
   });
-  const { data: invoices, isLoading } = useQuery<ApiResponse<PartialInvoice[]>>({
+
+  const { data: invoices, isLoading: invoicesLoading } = useQuery<ApiResponse<PartialInvoice[]>>({
     queryKey: ["partialInvoices"],
     queryFn: getPartialInvoices,
   });
 
   const addMutation = useMutation({
     mutationFn: addPartialInvoice,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
-      toast.success("Invoice added successfully!");
-      form.reset();
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
+        toast.success("Invoice added successfully!");
+        form.reset();
+      }
     },
-    onError: () => toast.error("Error adding invoice"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: { id: number; values: any }) =>
-      updatePartialInvoice(data.id, data.values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
-      toast.success("Invoice updated successfully!");
-      form.reset();
-      setEditId(null);
+    mutationFn: (data: { id: number; values: any }) => updatePartialInvoice(data.id, data.values),
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
+        toast.success("Invoice updated successfully!");
+        form.reset();
+        setEditId(null);
+      }
     },
-    onError: () => toast.error("Error updating invoice"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: deletePartialInvoice,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
-      toast.success("Invoice deleted successfully!");
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
+        toast.success("Invoice deleted successfully!");
+      }
     },
-    onError: () => toast.error("Error deleting invoice"),
   });
 
   const updateStatusMutation = useMutation({
@@ -154,12 +299,13 @@ export default function PartialInvoicesEntry() {
         invoiceStatus: data.status,
         receiptDate: data.date ? format(data.date, "yyyy-MM-dd") : null,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
-      toast.success("Status updated successfully!");
-      setStatusDialogInvoice(null);
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ["partialInvoices"] });
+        toast.success("Status updated successfully!");
+        setStatusDialogInvoice(null);
+      }
     },
-    onError: () => toast.error("Error updating status"),
   });
 
   const calculateValues = useCallback((amount: number) => ({
@@ -171,33 +317,26 @@ export default function PartialInvoicesEntry() {
     const amount = parseFloat(value);
     if (!isNaN(amount)) {
       const { vat, retention } = calculateValues(amount);
-      form.setValue("vat", vat.toFixed(2));
-      form.setValue("retention", retention.toFixed(2));
+      form.setValue("vat", vat.toFixed(2), { shouldValidate: true });
+      form.setValue("retention", retention.toFixed(2), { shouldValidate: true });
     }
   };
 
   const generateInvoiceNumber = useCallback(
     async (mocId: string) => {
-      const moc = (mocOptions as ApiResponse<MocOption[]>)?.data?.find(
-        (m) => m.id.toString() === mocId
-      );
+      if (!mocOptions?.success) return;
+      const moc = mocOptions.data?.find((m) => m.id.toString() === mocId);
       if (!moc) return;
-      const existingInvoices = (await queryClient.getQueryData([
-        "partialInvoices",
-      ])) as ApiResponse<PartialInvoice[]>;
+      const existingInvoices = await queryClient.getQueryData<ApiResponse<PartialInvoice[]>>(["partialInvoices"]);
       const maxNumber = Math.max(
-        ...(
-          (existingInvoices?.data || [])
-            .filter((i) => i.mocId === parseInt(mocId))
-            .map((i) => parseInt(i.invoiceNo.match(/INV-C-(\d+)$/)?.[1] || "0"))
-            .concat(0)
-        )
+        ...((existingInvoices?.data || [])
+          .filter((i) => i.mocId === parseInt(mocId))
+          .map((i) => parseInt(i.invoiceNo.match(/INV-C-(\d+)$/)?.[1] || "0"))
+          .concat(0))
       );
-      const nextNumber = maxNumber + 1;
-      const newInvoiceNo = `${moc.cwo} INV-C-${nextNumber.toString().padStart(3, "0")}`;
-      form.setValue("invoiceNo", newInvoiceNo);
+      form.setValue("invoiceNo", `${moc.cwo} INV-C-${(maxNumber + 1).toString().padStart(3, "0")}`, { shouldValidate: true });
     },
-    [mocOptions, queryClient]
+    [mocOptions, queryClient, form]
   );
 
   const onSubmit = async (values: FormValues) => {
@@ -210,11 +349,9 @@ export default function PartialInvoicesEntry() {
       invoiceDate: format(values.invoiceDate, "yyyy-MM-dd"),
       receiptDate: values.receiptDate ? format(values.receiptDate, "yyyy-MM-dd") : null,
     };
-    if (editId) {
-      updateMutation.mutate({ id: editId, values: invoiceData });
-    } else {
-      addMutation.mutate(invoiceData);
-    }
+    editId 
+      ? updateMutation.mutate({ id: editId, values: invoiceData })
+      : addMutation.mutate(invoiceData);
   };
 
   const handleEdit = (invoice: PartialInvoice) => {
@@ -230,16 +367,19 @@ export default function PartialInvoicesEntry() {
     setEditId(invoice.id);
   };
 
-  // Filtering
+  const clearFilters = () => setFilters(defaultFilters);
+
   const filteredInvoices = (invoices?.data ?? []).filter((invoice) => {
-    const searchLower = searchQuery.toLowerCase();
+    const searchLower = filters.search.toLowerCase();
+    const cwoLower = filters.cwo.toLowerCase();
     const invoiceDate = new Date(invoice.invoiceDate);
     const dateInRange = !startDate || !endDate ? true : invoiceDate >= startDate && invoiceDate <= endDate;
-    return (
-      dateInRange &&
+    return dateInRange &&
       (invoice.invoiceNo.toLowerCase().includes(searchLower) ||
-        invoice.mocNo.toLowerCase().includes(searchLower))
-    );
+      invoice.mocNo.toLowerCase().includes(searchLower)) &&
+      (cwoLower === "" || invoice.invoiceNo.toLowerCase().includes(cwoLower)) &&
+      (filters.moc === "all" || invoice.mocNo === filters.moc) &&
+      (filters.status === "all" || invoice.invoiceStatus === filters.status);
   });
 
   return (
@@ -250,24 +390,38 @@ export default function PartialInvoicesEntry() {
           <h3 className="text-2xl font-bold text-gray-800 mb-4">
             {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
           </h3>
+          
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* MOC Number */}
               <div className="grid grid-cols-[175px,1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700">Select MOC Number</Label>
                 <Select
                   value={form.watch("mocId")}
                   onValueChange={(value) => {
-                    form.setValue("mocId", value);
+                    form.setValue("mocId", value, { shouldValidate: true });
                     if (!editId) generateInvoiceNumber(value);
                   }}
                   required
+                  disabled={mocLoading}
                 >
                   <SelectTrigger className="h-9 text-gray-700">
-                    <SelectValue placeholder="Select MOC" />
+                    <SelectValue placeholder={
+                      mocLoading ? "Loading MOCs..." : 
+                      mocOptions?.success ? "Select MOC" : "Error loading MOCs"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    {(mocOptions?.data ?? []).map((moc: MocOption) => (
+                    {mocLoading && (
+                      <SelectItem disabled value="loading">
+                        Loading MOC options...
+                      </SelectItem>
+                    )}
+                    {!mocLoading && !mocOptions?.success && (
+                      <SelectItem disabled value="error" className="text-red-500">
+                        {mocOptions?.message || "Error loading MOC options"}
+                      </SelectItem>
+                    )}
+                    {mocOptions?.success && mocOptions.data?.map((moc: MocOption) => (
                       <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm text-gray-700">
                         {moc.mocNo}
                       </SelectItem>
@@ -275,7 +429,7 @@ export default function PartialInvoicesEntry() {
                   </SelectContent>
                 </Select>
               </div>
-              {/* Invoice Number */}
+
               <div className="grid grid-cols-[175px,1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700">Invoice Number</Label>
                 <Input
@@ -285,7 +439,7 @@ export default function PartialInvoicesEntry() {
                   placeholder={form.watch("mocId") ? "Generating..." : "Select MOC first"}
                 />
               </div>
-            {/* Invoice Date */}  
+
               <div className="grid grid-cols-[175px,1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700">Select Invoice Date</Label>
                 <Popover>
@@ -300,15 +454,15 @@ export default function PartialInvoicesEntry() {
                     <Calendar
                       mode="single"
                       selected={form.watch("invoiceDate")}
-                      onSelect={(date) => date && form.setValue("invoiceDate", date)}
+                      onSelect={(date) => date && form.setValue("invoiceDate", date, { shouldValidate: true })}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-700"
                     />
                   </PopoverContent>
                 </Popover>
               </div>
-              {/* Amount */}
+
               <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                <Label className="text-sm font-medium text-gray-700">Enter Invoive Amount</Label>
+                <Label className="text-sm font-medium text-gray-700">Enter Invoice Amount</Label>
                 <Input
                   {...form.register("amount")}
                   type="number"
@@ -318,7 +472,7 @@ export default function PartialInvoicesEntry() {
                   className="text-gray-700"
                 />
               </div>
-              {/* VAT */}
+
               <div className="grid grid-cols-[175px,1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700">Value Added Tax(VAT)</Label>
                 <Input
@@ -329,7 +483,7 @@ export default function PartialInvoicesEntry() {
                   className="bg-gray-100 text-gray-700"
                 />
               </div>
-              {/* Retention */}
+
               <div className="grid grid-cols-[175px,1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700">Retention Value</Label>
                 <Input
@@ -341,12 +495,11 @@ export default function PartialInvoicesEntry() {
                 />
               </div>
 
-              {/* Status */}
               <div className="grid grid-cols-[175px,1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700">Select Invoice Status</Label>
                 <Select
                   value={form.watch("invoiceStatus")}
-                  onValueChange={(value) => form.setValue("invoiceStatus", value)}
+                  onValueChange={(value) => form.setValue("invoiceStatus", value, { shouldValidate: true })}
                   required
                 >
                   <SelectTrigger className="h-9 text-gray-700">
@@ -361,203 +514,191 @@ export default function PartialInvoicesEntry() {
                   </SelectContent>
                 </Select>
               </div>
-                 {/* Actions */}
-            <div className="flex items-center space-x-2 justify-end mb-4">
+
+              <div className="flex items-center space-x-2 justify-end">
               {editId && (
+  <Button
+    type="button"
+    variant="outline"
+    onClick={() => { 
+      form.reset({
+        mocId: "",
+        invoiceNo: "",
+        invoiceDate: new Date(),
+        amount: "",
+        vat: "",
+        retention: "",
+        invoiceStatus: "",
+        receiptDate: null,
+      });
+      form.trigger();
+      setEditId(null);
+    }}
+    disabled={addMutation.isPending || updateMutation.isPending}
+  >
+    Cancel
+  </Button>
+)}
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    form.reset();
-                    setEditId(null);
-                  }}
-                  disabled={addMutation.isPending || updateMutation.isPending}
-                  className="text-gray-700"
+                  type="submit"
+                  disabled={
+                    addMutation.isPending || 
+                    updateMutation.isPending || 
+                    !form.formState.isValid
+                  }
                 >
-                  Cancel
+                  {addMutation.isPending || updateMutation.isPending ? (
+                    <Loader2 className="animate-spin h-5 w-5" />
+                  ) : editId ? (
+                    "Update Invoice"
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Invoice
+                    </>
+                  )}
                 </Button>
-              )}
-              <Button
-                type="submit"
-                className="w-full md:w-auto"
-                disabled={addMutation.isPending || updateMutation.isPending}
-              >
-                {addMutation.isPending || updateMutation.isPending ? (
-                  <Loader2 className="animate-spin h-5 w-5" />
-                ) : editId ? (
-                  "Update Invoice"
-                ) : (
-                  "Add Invoice"
-                )}
-              </Button>
-              <div className="flex items-center space-x-2">
-                <Input
-                  placeholder="Search invoices..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 text-gray-700"
-                />
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="text-gray-700">
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      {startDate ? (
-                        endDate ? (
-                          `${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd")}`
-                        ) : (
-                          format(startDate, "MMM dd")
-                        )
-                      ) : (
-                        "Select Date Range"
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="range"
-                      selected={{
-                        from: startDate || undefined,
-                        to: endDate || undefined,
-                      }}
-                      onSelect={(range) =>
-                        setDateRange([range?.from || null, range?.to || null])
-                      }
-                      numberOfMonths={2}
-                      className="rounded-md border"
-                    />
-                  </PopoverContent>
-                </Popover>
               </div>
             </div>
-            </div>
-         
           </form>
 
-          {/* Invoice Table */}
           <div className="mt-8 flex-1 flex flex-col">
-            <div className="border rounded-lg overflow-hidden flex-1">
-              <div className="relative h-full">
-                <div className="absolute inset-0 overflow-auto">
-                  <Table className="border-collapse">
-                    <TableHeader className="sticky top-0 bg-gray-50 shadow-sm z-10">
-                      <TableRow className="h-8">
-                        <TableHead className="font-semibold text-gray-700 py-2">MOC Number</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-2">Invoice No</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-2">Inv. Date</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-2">Amount</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-2">Receipt Date</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-2">Status</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-2">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="p-4 flex justify-center">
-                            <Loader2 className="animate-spin h-6 w-6 text-gray-700" />
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredInvoices.map((invoice) => (
-                          <TableRow key={invoice.id} className="h-8 hover:bg-gray-50">
-                            <TableCell>{invoice.mocNo}</TableCell>
-                            <TableCell>{invoice.invoiceNo}</TableCell>
-                            <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
-                            <TableCell className="font-medium">{invoice.amount.toFixed(2)}</TableCell>
-                            <TableCell>
-                              {invoice.receiptDate
-                                ? new Date(invoice.receiptDate).toLocaleDateString()
-                                : "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                onClick={() => {
-                                  setStatusDialogInvoice(invoice);
-                                  setNewStatus(invoice.invoiceStatus);
-                                  setNewReceiptDate(invoice.receiptDate ? new Date(invoice.receiptDate) : null);
-                                }}
-                                className="cursor-pointer"
-                              >
-                                {invoice.invoiceStatus}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="space-x-2">
-                              <Button variant="outline" size="icon" onClick={() => handleEdit(invoice)}>
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button variant="destructive" size="icon" onClick={() => deleteMutation.mutate(invoice.id)}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-                {(addMutation.isPending || updateMutation.isPending || deleteMutation.isPending) && (
-                  <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
-                    <Loader2 className="animate-spin h-6 w-6 text-gray-700" />
-                  </div>
-                )}
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold">Partial Invoices</h4>
+              <div className="space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  type="button"
+                  disabled={JSON.stringify(filters) === JSON.stringify(defaultFilters)}
+                >
+                  Clear Filters
+                </Button>
+                <Button variant="outline" onClick={() => setFiltersDialogOpen(true)}>
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  Filters
+                </Button>
               </div>
+            </div>
+
+            <div className="border rounded-lg overflow-auto flex-1">
+              <Table>
+                <TableHeader className="bg-gray-50">
+                  <TableRow>
+                    <TableHead>MOC Number</TableHead>
+                    <TableHead>Invoice No</TableHead>
+                    <TableHead>Inv. Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Receipt Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoicesLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center">
+                        <Loader2 className="animate-spin h-6 w-6 mx-auto" />
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredInvoices.map((invoice) => (
+                    <TableRow key={invoice.id} className="h-8 hover:bg-gray-50">
+                      <TableCell>{invoice.mocNo}</TableCell>
+                      <TableCell>{invoice.invoiceNo}</TableCell>
+                      <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{invoice.amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        {invoice.receiptDate
+                          ? new Date(invoice.receiptDate).toLocaleDateString()
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          onClick={() => {
+                            setStatusDialogInvoice(invoice);
+                            setNewStatus(invoice.invoiceStatus);
+                            setNewReceiptDate(invoice.receiptDate ? new Date(invoice.receiptDate) : null);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {invoice.invoiceStatus}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell className="space-x-2">
+                        <Button variant="outline" size="icon" onClick={() => handleEdit(invoice)}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button variant="destructive" size="icon" 
+                          onClick={() => deleteMutation.mutate(invoice.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>
       </div>
-      {/* Status Update Dialog for Invoice Rows */}
+
+      {mocOptions?.data && (
+        <FilterDialog
+          open={filtersDialogOpen}
+          onClose={() => setFiltersDialogOpen(false)}
+          initialFilters={filters}
+          mocOptions={mocOptions.data}
+          onApply={setFilters}
+        />
+      )}
+
       {statusDialogInvoice && (
-        <Dialog open={true} onOpenChange={() => setStatusDialogInvoice(null)}>
+        <Dialog open onOpenChange={() => setStatusDialogInvoice(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Update Invoice Status</DialogTitle>
+              <DialogTitle>Update Status</DialogTitle>
               <DialogDescription>
-                Select the new status. If "PAID" is chosen, please pick a receipt date.
+                {newStatus === "PAID" && "Select receipt date for PAID status"}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Status</Label>
-                <Select value={newStatus} onValueChange={(val) => setNewStatus(val)}>
-                  <SelectTrigger className="w-full text-gray-700">
-                    <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
-                      <SelectItem key={status} value={status} className="text-sm text-gray-700">
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-4">
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {newStatus === "PAID" && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Receipt Date</Label>
-                  <Calendar
-                    mode="single"
-                    selected={newReceiptDate || undefined}
-                    onSelect={(date) => date && setNewReceiptDate(date)}
-                    className="rounded-md border"
-                  />
-                </div>
+                <Calendar
+                  mode="single"
+                  selected={newReceiptDate || undefined}
+                  onSelect={(date) => date && setNewReceiptDate(date)}
+                />
               )}
             </div>
-            <DialogFooter className="space-x-2">
+            <DialogFooter>
               <Button variant="outline" onClick={() => setStatusDialogInvoice(null)}>
                 Cancel
               </Button>
               <Button
-                onClick={() =>
+                onClick={() => {
+                  if (newStatus === "PAID" && !newReceiptDate) {
+                    toast.error("Receipt date required");
+                    return;
+                  }
                   updateStatusMutation.mutate({
                     id: statusDialogInvoice.id,
                     status: newStatus,
                     date: newStatus === "PAID" ? newReceiptDate || new Date() : undefined,
-                  })
-                }
-                disabled={updateStatusMutation.isPending}
+                  });
+                }}
               >
-                {updateStatusMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : "Save Changes"}
+                Save
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -566,4 +707,3 @@ export default function PartialInvoicesEntry() {
     </div>
   );
 }
-
