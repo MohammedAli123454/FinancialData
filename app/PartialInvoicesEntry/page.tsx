@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastContainer, toast } from "react-toastify";
@@ -237,6 +237,7 @@ export default function PartialInvoicesEntry() {
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
   const [isAddingNewInvoice, setIsAddingNewInvoice] = useState(false);
   const [startDate, endDate] = filters.dateRange;
+  const formRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -380,6 +381,7 @@ export default function PartialInvoicesEntry() {
     });
     setEditId(invoice.id);
     setIsAddingNewInvoice(true);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const clearFilters = () => setFilters(defaultFilters);
@@ -416,6 +418,7 @@ export default function PartialInvoicesEntry() {
 
           {/* Show form only if adding new invoice or editing an invoice */}
           {(isAddingNewInvoice || editId) && (
+                        <div ref={formRef}>
             <>
               <h3 className="text-2xl font-bold text-gray-800 mb-4">
                 {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
@@ -589,6 +592,7 @@ export default function PartialInvoicesEntry() {
                 </div>
               </form>
             </>
+            </div>
           )}
 
           <div className="mt-8 flex-1 flex flex-col">
