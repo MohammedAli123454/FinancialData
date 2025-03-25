@@ -76,6 +76,7 @@ interface PartialInvoice {
   id: number;
   mocId: number;
   mocNo: string;
+  shortDescription: string | null;
   invoiceNo: string;
   invoiceDate: string;
   amount: number;
@@ -364,7 +365,7 @@ export default function PartialInvoicesEntry() {
       invoiceDate: format(values.invoiceDate, "yyyy-MM-dd"),
       receiptDate: values.receiptDate ? format(values.receiptDate, "yyyy-MM-dd") : null,
     };
-    editId 
+    editId
       ? updateMutation.mutate({ id: editId, values: invoiceData })
       : addMutation.mutate(invoiceData);
   };
@@ -393,7 +394,7 @@ export default function PartialInvoicesEntry() {
     const dateInRange = !startDate || !endDate ? true : invoiceDate >= startDate && invoiceDate <= endDate;
     return dateInRange &&
       (invoice.invoiceNo.toLowerCase().includes(searchLower) ||
-      invoice.mocNo.toLowerCase().includes(searchLower)) &&
+        invoice.mocNo.toLowerCase().includes(searchLower)) &&
       (cwoLower === "" || invoice.invoiceNo.toLowerCase().includes(cwoLower)) &&
       (filters.moc === "all" || invoice.mocNo === filters.moc) &&
       (filters.status === "all" || invoice.invoiceStatus === filters.status);
@@ -418,180 +419,180 @@ export default function PartialInvoicesEntry() {
 
           {/* Show form only if adding new invoice or editing an invoice */}
           {(isAddingNewInvoice || editId) && (
-                        <div ref={formRef}>
-            <>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">
-                {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
-              </h3>
-              
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                    <Label className="text-sm font-medium text-gray-700">Select MOC Number</Label>
-                    <Select
-                      value={form.watch("mocId")}
-                      onValueChange={(value) => {
-                        form.setValue("mocId", value, { shouldValidate: true });
-                        if (!editId) generateInvoiceNumber(value);
-                      }}
-                      required
-                      disabled={mocLoading}
-                    >
-                      <SelectTrigger className="h-9 text-gray-700">
-                        <SelectValue placeholder={
-                          mocLoading ? "Loading MOCs..." : 
-                          mocOptions?.success ? "Select MOC" : "Error loading MOCs"
-                        } />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mocLoading && (
-                          <SelectItem disabled value="loading">
-                            Loading MOC options...
-                          </SelectItem>
+            <div ref={formRef}>
+              <>
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">
+                  {editId ? "Edit Partial Invoice" : "Add Partial Invoice"}
+                </h3>
+
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                      <Label className="text-sm font-medium text-gray-700">Select MOC Number</Label>
+                      <Select
+                        value={form.watch("mocId")}
+                        onValueChange={(value) => {
+                          form.setValue("mocId", value, { shouldValidate: true });
+                          if (!editId) generateInvoiceNumber(value);
+                        }}
+                        required
+                        disabled={mocLoading}
+                      >
+                        <SelectTrigger className="h-9 text-gray-700">
+                          <SelectValue placeholder={
+                            mocLoading ? "Loading MOCs..." :
+                              mocOptions?.success ? "Select MOC" : "Error loading MOCs"
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mocLoading && (
+                            <SelectItem disabled value="loading">
+                              Loading MOC options...
+                            </SelectItem>
+                          )}
+                          {!mocLoading && !mocOptions?.success && (
+                            <SelectItem disabled value="error" className="text-red-500">
+                              {mocOptions?.message || "Error loading MOC options"}
+                            </SelectItem>
+                          )}
+                          {mocOptions?.success && mocOptions.data?.map((moc: MocOption) => (
+                            <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm text-gray-700">
+                              {moc.mocNo}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                      <Label className="text-sm font-medium text-gray-700">Invoice Number</Label>
+                      <Input
+                        {...form.register("invoiceNo")}
+                        readOnly
+                        className="bg-gray-100 text-gray-700"
+                        placeholder={form.watch("mocId") ? "Generating..." : "Select MOC first"}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                      <Label className="text-sm font-medium text-gray-700">Select Invoice Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full text-gray-700">
+                            {form.watch("invoiceDate")
+                              ? format(form.watch("invoiceDate"), "yyyy-MM-dd")
+                              : "Select Date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0">
+                          <Calendar
+                            mode="single"
+                            selected={form.watch("invoiceDate")}
+                            onSelect={(date) => date && form.setValue("invoiceDate", date, { shouldValidate: true })}
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-700"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                      <Label className="text-sm font-medium text-gray-700">Enter Invoice Amount</Label>
+                      <Input
+                        {...form.register("amount")}
+                        type="number"
+                        step="0.01"
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        required
+                        className="text-gray-700"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                      <Label className="text-sm font-medium text-gray-700">Value Added Tax(VAT)</Label>
+                      <Input
+                        {...form.register("vat")}
+                        type="number"
+                        step="0.01"
+                        disabled
+                        className="bg-gray-100 text-gray-700"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                      <Label className="text-sm font-medium text-gray-700">Retention Value</Label>
+                      <Input
+                        {...form.register("retention")}
+                        type="number"
+                        step="0.01"
+                        disabled
+                        className="bg-gray-100 text-gray-700"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-[175px,1fr] items-center gap-4">
+                      <Label className="text-sm font-medium text-gray-700">Select Invoice Status</Label>
+                      <Select
+                        value={form.watch("invoiceStatus")}
+                        onValueChange={(value) => form.setValue("invoiceStatus", value, { shouldValidate: true })}
+                        required
+                      >
+                        <SelectTrigger className="h-9 text-gray-700">
+                          <SelectValue placeholder="Select Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
+                            <SelectItem key={status} value={status} className="text-sm text-gray-700">
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center space-x-2 justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          form.reset({
+                            mocId: "",
+                            invoiceNo: "",
+                            invoiceDate: new Date(),
+                            amount: "",
+                            vat: "",
+                            retention: "",
+                            invoiceStatus: "",
+                            receiptDate: null,
+                          });
+                          form.trigger();
+                          setEditId(null);
+                          setIsAddingNewInvoice(false);
+                        }}
+                        disabled={addMutation.isPending || updateMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={
+                          addMutation.isPending ||
+                          updateMutation.isPending ||
+                          !form.formState.isValid
+                        }
+                      >
+                        {addMutation.isPending || updateMutation.isPending ? (
+                          <Loader2 className="animate-spin h-5 w-5" />
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Save Invoice
+                          </>
                         )}
-                        {!mocLoading && !mocOptions?.success && (
-                          <SelectItem disabled value="error" className="text-red-500">
-                            {mocOptions?.message || "Error loading MOC options"}
-                          </SelectItem>
-                        )}
-                        {mocOptions?.success && mocOptions.data?.map((moc: MocOption) => (
-                          <SelectItem key={moc.id} value={moc.id.toString()} className="text-sm text-gray-700">
-                            {moc.mocNo}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      </Button>
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                    <Label className="text-sm font-medium text-gray-700">Invoice Number</Label>
-                    <Input
-                      {...form.register("invoiceNo")}
-                      readOnly
-                      className="bg-gray-100 text-gray-700"
-                      placeholder={form.watch("mocId") ? "Generating..." : "Select MOC first"}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                    <Label className="text-sm font-medium text-gray-700">Select Invoice Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full text-gray-700">
-                          {form.watch("invoiceDate")
-                            ? format(form.watch("invoiceDate"), "yyyy-MM-dd")
-                            : "Select Date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="p-0">
-                        <Calendar
-                          mode="single"
-                          selected={form.watch("invoiceDate")}
-                          onSelect={(date) => date && form.setValue("invoiceDate", date, { shouldValidate: true })}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-700"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                    <Label className="text-sm font-medium text-gray-700">Enter Invoice Amount</Label>
-                    <Input
-                      {...form.register("amount")}
-                      type="number"
-                      step="0.01"
-                      onChange={(e) => handleAmountChange(e.target.value)}
-                      required
-                      className="text-gray-700"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                    <Label className="text-sm font-medium text-gray-700">Value Added Tax(VAT)</Label>
-                    <Input
-                      {...form.register("vat")}
-                      type="number"
-                      step="0.01"
-                      disabled
-                      className="bg-gray-100 text-gray-700"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                    <Label className="text-sm font-medium text-gray-700">Retention Value</Label>
-                    <Input
-                      {...form.register("retention")}
-                      type="number"
-                      step="0.01"
-                      disabled
-                      className="bg-gray-100 text-gray-700"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-[175px,1fr] items-center gap-4">
-                    <Label className="text-sm font-medium text-gray-700">Select Invoice Status</Label>
-                    <Select
-                      value={form.watch("invoiceStatus")}
-                      onValueChange={(value) => form.setValue("invoiceStatus", value, { shouldValidate: true })}
-                      required
-                    >
-                      <SelectTrigger className="h-9 text-gray-700">
-                        <SelectValue placeholder="Select Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
-                          <SelectItem key={status} value={status} className="text-sm text-gray-700">
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-2 justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        form.reset({
-                          mocId: "",
-                          invoiceNo: "",
-                          invoiceDate: new Date(),
-                          amount: "",
-                          vat: "",
-                          retention: "",
-                          invoiceStatus: "",
-                          receiptDate: null,
-                        });
-                        form.trigger();
-                        setEditId(null);
-                        setIsAddingNewInvoice(false);
-                      }}
-                      disabled={addMutation.isPending || updateMutation.isPending}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={
-                        addMutation.isPending || 
-                        updateMutation.isPending || 
-                        !form.formState.isValid
-                      }
-                    >
-                      {addMutation.isPending || updateMutation.isPending ? (
-                        <Loader2 className="animate-spin h-5 w-5" />
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Save Invoice
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </>
+                </form>
+              </>
             </div>
           )}
 
@@ -613,68 +614,91 @@ export default function PartialInvoicesEntry() {
                 </Button>
               </div>
             </div>
-
-            <div className="border rounded-lg overflow-auto flex-1">
-              <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead>MOC Number</TableHead>
-                    <TableHead>Invoice No</TableHead>
-                    <TableHead>Inv. Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Receipt Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoicesLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center">
-                        <Loader2 className="animate-spin h-6 w-6 mx-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredInvoices.map((invoice) => (
-                    <TableRow key={invoice.id} className="h-8 hover:bg-gray-50">
-                      <TableCell>{invoice.mocNo}</TableCell>
-                      <TableCell>{invoice.invoiceNo}</TableCell>
-                      <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-medium">{invoice.amount.toFixed(2)}</TableCell>
-                      <TableCell>
-                        {invoice.receiptDate
-                          ? new Date(invoice.receiptDate).toLocaleDateString()
-                          : "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          onClick={() => {
-                            setStatusDialogInvoice(invoice);
-                            setNewStatus(invoice.invoiceStatus);
-                            setNewReceiptDate(invoice.receiptDate ? new Date(invoice.receiptDate) : null);
-                          }}
-                          className="cursor-pointer"
+            <div className="mt-8 flex-1 flex flex-col">
+  <div className="border rounded-lg">
+    <table className="w-full table-fixed border-collapse">
+      <thead className="sticky top-0 bg-gray-100">
+                    <tr>
+                      <th className="border-b border-gray-200 px-2 py-2 w-40 text-left text-gray-700">MOC Number</th>
+                      <th className="border-b border-gray-200 px-2 py-2 w-42 text-left text-gray-700">Short Desc.</th>
+                      <th className="border-b border-gray-200 px-2 py-2 w-52 text-left text-gray-700">Invoice No</th>
+                      <th className="border-b border-gray-200 px-2 py-2 w-25 text-center text-gray-700">Inv. Date</th>
+                      <th className="border-b border-gray-200 px-2 py-2 w-32 text-center text-gray-700">Amount</th>
+                      <th className="border-b border-gray-200 px-2 py-2 w-30 text-center text-gray-700">Receipt Date</th>
+                      <th className="border-b border-gray-200 px-2 py-2 w-25 text-center text-gray-700">Status</th>
+                      <th className="border-b border-gray-200 px-2 py-2 w-30 text-center text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm font-sans">
+                    {invoicesLoading ? (
+                      <tr>
+                        <td colSpan={8} className="text-center py-6">
+                          <Loader2 className="animate-spin h-6 w-6 mx-auto" />
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredInvoices.map((invoice) => (
+                        <tr
+                          key={invoice.id}
+                          className="h-10 even:bg-gray-50 odd:bg-white hover:bg-gray-100 transition-colors duration-150"
                         >
-                          {invoice.invoiceStatus}
-                        </Badge>
-                      </TableCell>
-
-                      <TableCell className="space-x-2">
-                        <Button variant="outline" size="icon" onClick={() => handleEdit(invoice)}>
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => setInvoiceToDelete(invoice)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                          {/* String columns with text truncation */}
+                          <td className="border-b border-gray-200 px-2 py-2 text-left">
+                            <div className="truncate">{invoice.mocNo}</div>
+                          </td>
+                          <td className="border-b border-gray-200 px-2 py-2 text-left">
+                            <div className="truncate">{invoice.shortDescription}</div>
+                          </td>
+                          <td className="border-b border-gray-200 px-2 py-2 text-left">
+                            <div className="truncate">{invoice.invoiceNo}</div>
+                          </td>
+                          {/* Other columns */}
+                          <td className="border-b border-gray-200 px-2 py-2 text-center">
+                            {new Date(invoice.invoiceDate).toLocaleDateString()}
+                          </td>
+                          <td className="border-b border-gray-200 px-2 py-2 font-medium text-center">
+                            {invoice.amount.toFixed(2)}
+                          </td>
+                          <td className="border-b border-gray-200 px-2 py-2 text-center">
+                            {invoice.receiptDate
+                              ? new Date(invoice.receiptDate).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                          <td className="border-b border-gray-200 px-2 py-2 text-center">
+                            <div className="truncate">
+                              <Badge
+                                onClick={() => {
+                                  setStatusDialogInvoice(invoice);
+                                  setNewStatus(invoice.invoiceStatus);
+                                  setNewReceiptDate(
+                                    invoice.receiptDate ? new Date(invoice.receiptDate) : null
+                                  );
+                                }}
+                                className="cursor-pointer"
+                              >
+                                {invoice.invoiceStatus}
+                              </Badge>
+                            </div>
+                          </td>
+                          <td className="border-b border-gray-200 px-2 py-2 text-center space-x-2">
+                            <Button variant="outline" size="icon" onClick={() => handleEdit(invoice)}>
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="destructive" size="icon" onClick={() => setInvoiceToDelete(invoice)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+
+
+
           </div>
         </div>
       </div>

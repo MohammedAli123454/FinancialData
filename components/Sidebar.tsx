@@ -33,6 +33,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
       links: [
         { name: "Create New MOC", path: "/CreateNewMoc" },
         { name: "Register Page", path: "/RegisterPage" },
+        { name: "Employee", path: "/Employee" },
       ],
     },
   ];

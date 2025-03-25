@@ -39,6 +39,7 @@ export interface PartialInvoice {
   id: number;
   mocId: number;
   mocNo: string;
+  shortDescription: string | null;
   invoiceNo: string;
   invoiceDate: string;
   amount: number;
@@ -84,6 +85,7 @@ export async function getPartialInvoices() {
         invoiceStatus: partialInvoices.invoiceStatus,
         receiptDate: partialInvoices.receiptDate,
         mocNo: mocs.mocNo,
+        shortDescription: mocs.shortDescription
       })
       .from(partialInvoices)
       .leftJoin(mocs, eq(partialInvoices.mocId, mocs.id));
