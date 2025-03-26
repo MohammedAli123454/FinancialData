@@ -5,11 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastContainer, toast } from "react-toastify";
 import { format } from "date-fns";
 import {
-  addPartialInvoice,
-  updatePartialInvoice,
-  deletePartialInvoice,
-  getMocOptions,
-  getPartialInvoices,
+  addPartialInvoice, updatePartialInvoice, deletePartialInvoice, getMocOptions, getPartialInvoices,
 } from "../actions/partialInvoiceCURD";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,21 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, } from "@/components/ui/dialog";
 import { Edit, Trash2, CalendarIcon, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -94,132 +77,6 @@ const defaultFilters: FilterValues = {
   status: "all",
   dateRange: [null, null],
 };
-
-interface FilterDialogProps {
-  open: boolean;
-  onClose: () => void;
-  initialFilters: FilterValues;
-  mocOptions: MocOption[];
-  onApply: (filters: FilterValues) => void;
-}
-// Filter Dialog component for filtering invoices
-function FilterDialog({ open, onClose, initialFilters, mocOptions, onApply }: FilterDialogProps) {
-  const [localFilters, setLocalFilters] = useState<FilterValues>(initialFilters);
-  const { search, cwo, moc, status, dateRange } = localFilters;
-  const [startDate, endDate] = dateRange;
-
-  const clearLocalFilters = () => {
-    setLocalFilters(defaultFilters);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Filter Invoices</DialogTitle>
-          <DialogDescription>
-            Enter filter criteria including search term, CWO, MOC number, status and a date range.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">Search Term</Label>
-            <Input
-              placeholder="Search by invoice or MOC number..."
-              value={search}
-              onChange={(e) => setLocalFilters({ ...localFilters, search: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">CWO Number</Label>
-            <Input
-              placeholder="Enter CWO number..."
-              value={cwo}
-              onChange={(e) => setLocalFilters({ ...localFilters, cwo: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">MOC Number</Label>
-            <Select
-              value={moc}
-              onValueChange={(value) => setLocalFilters({ ...localFilters, moc: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select MOC" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {mocOptions.map((mocOption) => (
-                  <SelectItem key={mocOption.id} value={mocOption.mocNo}>
-                    {mocOption.mocNo}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">Invoice Status</Label>
-            <Select
-              value={status}
-              onValueChange={(value) => setLocalFilters({ ...localFilters, status: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {["PMD", "PMT", "FINANCE", "PAID"].map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-gray-700">Date Range</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline">
-                  {startDate
-                    ? endDate
-                      ? `${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd")}`
-                      : format(startDate, "MMM dd")
-                    : "Select Date Range"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="range"
-                  selected={{ from: startDate || undefined, to: endDate || undefined }}
-                  onSelect={(range) =>
-                    setLocalFilters({
-                      ...localFilters,
-                      dateRange: [range?.from || null, range?.to || null],
-                    })
-                  }
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-        <DialogFooter className="space-x-2">
-          <Button variant="outline" onClick={clearLocalFilters}>
-            Clear Filters
-          </Button>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => { onApply(localFilters); onClose(); }}>
-            Apply Filters
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function PartialInvoicesEntry() {
   const queryClient = useQueryClient();
   const [editId, setEditId] = useState<number | null>(null);
@@ -230,6 +87,7 @@ export default function PartialInvoicesEntry() {
   const [newReceiptDate, setNewReceiptDate] = useState<Date | null>(null);
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
   const [isAddingNewInvoice, setIsAddingNewInvoice] = useState(false);
+  const [localFilters, setLocalFilters] = useState<FilterValues>(filters);
   const [startDate, endDate] = filters.dateRange;
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -363,7 +221,7 @@ export default function PartialInvoicesEntry() {
       ? updateMutation.mutate({ id: editId, values: invoiceData })
       : addMutation.mutate(invoiceData);
   };
- // Handle editing an existing invoice by populating form fields
+  // Handle editing an existing invoice by populating form fields
   const handleEdit = (invoice: PartialInvoice) => {
     form.reset({
       ...invoice,
@@ -380,7 +238,7 @@ export default function PartialInvoicesEntry() {
   };
 
   const clearFilters = () => setFilters(defaultFilters);
-    // Filter invoices based on applied filter criteria
+  // Filter invoices based on applied filter criteria
   const filteredInvoices = (invoices?.data ?? []).filter((invoice) => {
     const searchLower = filters.search.toLowerCase();
     const cwoLower = filters.cwo.toLowerCase();
@@ -399,7 +257,7 @@ export default function PartialInvoicesEntry() {
       <ToastContainer position="top-center" autoClose={3000} />
       <div className="flex-grow max-w-7xl mx-auto w-full px-4 py-4">
         <div className="bg-white rounded-lg shadow-lg p-2 h-full flex flex-col">
-       {/* Top Add New Invoice Button (visible when not adding or editing) */}
+          {/* Top Add New Invoice Button (visible when not adding or editing) */}
           {!isAddingNewInvoice && !editId && (
             <div className="mb-4">
               <Button onClick={() => {
@@ -411,7 +269,7 @@ export default function PartialInvoicesEntry() {
             </div>
           )}
 
-             {/* Form for adding or editing a partial invoice */}
+          {/* Form for adding or editing a partial invoice */}
           {(isAddingNewInvoice || editId) && (
             <div ref={formRef}>
               <>
@@ -611,7 +469,7 @@ export default function PartialInvoicesEntry() {
             </div>
             <div className="mt-2 flex-1 flex flex-col">
               <div className="border rounded-lg">
-                                {/* 
+                {/* 
                   Table to load partial invoices.
                   Each row displays invoice details and actions for editing, deleting, or updating status.
                 */}
@@ -694,24 +552,118 @@ export default function PartialInvoicesEntry() {
                 </table>
               </div>
             </div>
-
-
-
-
           </div>
         </div>
       </div>
-     {/* Filter Dialog for applying invoice filters */}
-      {mocOptions?.data && (
-        <FilterDialog
-          open={filtersDialogOpen}
-          onClose={() => setFiltersDialogOpen(false)}
-          initialFilters={filters}
-          mocOptions={mocOptions.data}
-          onApply={setFilters}
-        />
-      )}
-{/* 
+
+      <Dialog open={filtersDialogOpen} onOpenChange={setFiltersDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filter Invoices</DialogTitle>
+            <DialogDescription>
+              Enter filter criteria including search term, CWO, MOC number, status and a date range.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Search Term</Label>
+              <Input
+                placeholder="Search by invoice or MOC number..."
+                value={localFilters.search}
+                onChange={(e) => setLocalFilters(prev => ({ ...prev, search: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">CWO Number</Label>
+              <Input
+                placeholder="Enter CWO number..."
+                value={localFilters.cwo}
+                onChange={(e) => setLocalFilters(prev => ({ ...prev, cwo: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">MOC Number</Label>
+              <Select
+                value={localFilters.moc}
+                onValueChange={(value) => setLocalFilters(prev => ({ ...prev, moc: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select MOC" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {mocOptions?.data?.map((mocOption) => (
+                    <SelectItem key={mocOption.id} value={mocOption.mocNo}>
+                      {mocOption.mocNo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Invoice Status</Label>
+              <Select
+                value={localFilters.status}
+                onValueChange={(value) => setLocalFilters(prev => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {["PMD", "PMT", "FINANCE", "PAID"].map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">Date Range</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline">
+                    {localFilters.dateRange[0]
+                      ? localFilters.dateRange[1]
+                        ? `${format(localFilters.dateRange[0], "MMM dd")} - ${format(localFilters.dateRange[1], "MMM dd")}`
+                        : format(localFilters.dateRange[0], "MMM dd")
+                      : "Select Date Range"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="range"
+                    selected={{ from: localFilters.dateRange[0] || undefined, to: localFilters.dateRange[1] || undefined }}
+                    onSelect={(range) =>
+                      setLocalFilters(prev => ({
+                        ...prev,
+                        dateRange: [range?.from || null, range?.to || null],
+                      }))
+                    }
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter className="space-x-2">
+            <Button variant="outline" onClick={() => setLocalFilters(defaultFilters)}>
+              Clear Filters
+            </Button>
+            <Button variant="outline" onClick={() => setFiltersDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => { setFilters(localFilters); setFiltersDialogOpen(false); }}>
+              Apply Filters
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+
+      {/* 
         Dialog to update invoice status.
         Allows changing status and, if status is "PAID", selecting a receipt date.
       */}
@@ -774,7 +726,7 @@ export default function PartialInvoicesEntry() {
         </Dialog>
       )}
 
- {/* 
+      {/* 
         Dialog to delete the invoice.
         Opens a confirmation dialog before deletion.
       */}
