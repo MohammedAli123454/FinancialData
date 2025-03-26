@@ -33,19 +33,12 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Edit, Trash2, CalendarIcon, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import "react-toastify/dist/ReactToastify.css";
 
+// Schema definition for form validation
 const formSchema = z.object({
   mocId: z.string().min(1, "MOC is required"),
   invoiceNo: z.string().min(1, "Invoice number is required"),
@@ -109,7 +102,7 @@ interface FilterDialogProps {
   mocOptions: MocOption[];
   onApply: (filters: FilterValues) => void;
 }
-
+// Filter Dialog component for filtering invoices
 function FilterDialog({ open, onClose, initialFilters, mocOptions, onApply }: FilterDialogProps) {
   const [localFilters, setLocalFilters] = useState<FilterValues>(initialFilters);
   const { search, cwo, moc, status, dateRange } = localFilters;
@@ -240,6 +233,7 @@ export default function PartialInvoicesEntry() {
   const [startDate, endDate] = filters.dateRange;
   const formRef = useRef<HTMLDivElement>(null);
 
+  // Initialize form with react-hook-form and zod validation
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -253,17 +247,17 @@ export default function PartialInvoicesEntry() {
       receiptDate: null,
     },
   });
-
+  // Query for MOC options data
   const { data: mocOptions, isLoading: mocLoading } = useQuery<ApiResponse<MocOption[]>>({
     queryKey: ["mocOptions"],
     queryFn: getMocOptions,
   });
-
+  // Query for Partial Invoices data
   const { data: invoices, isLoading: invoicesLoading } = useQuery<ApiResponse<PartialInvoice[]>>({
     queryKey: ["partialInvoices"],
     queryFn: getPartialInvoices,
   });
-
+  // Mutation for adding a new invoice
   const addMutation = useMutation({
     mutationFn: addPartialInvoice,
     onSuccess: (data) => {
@@ -275,7 +269,7 @@ export default function PartialInvoicesEntry() {
       }
     },
   });
-
+  // Mutation for updating an existing invoice
   const updateMutation = useMutation({
     mutationFn: (data: { id: number; values: any }) => updatePartialInvoice(data.id, data.values),
     onSuccess: (data) => {
@@ -287,7 +281,7 @@ export default function PartialInvoicesEntry() {
       }
     },
   });
-
+  // Mutation for deleting an invoice
   const deleteMutation = useMutation({
     mutationFn: deletePartialInvoice,
     onSuccess: (data) => {
@@ -297,7 +291,7 @@ export default function PartialInvoicesEntry() {
       }
     },
   });
-
+  // Mutation for updating the invoice status
   const updateStatusMutation = useMutation({
     mutationFn: (data: { id: number; status: string; date?: Date }) =>
       updatePartialInvoice(data.id, {
@@ -312,12 +306,12 @@ export default function PartialInvoicesEntry() {
       }
     },
   });
-
+  // Calculate VAT and Retention values based on invoice amount
   const calculateValues = useCallback((amount: number) => ({
     vat: amount * 0.15,
     retention: amount * 0.1,
   }), []);
-
+  // Handle changes to the invoice amount input field
   const handleAmountChange = (value: string) => {
     const amount = parseFloat(value);
     if (!isNaN(amount)) {
@@ -326,7 +320,7 @@ export default function PartialInvoicesEntry() {
       form.setValue("retention", retention.toFixed(2), { shouldValidate: true });
     }
   };
-
+  // Generate a new invoice number based on selected MOC
   const generateInvoiceNumber = useCallback(
     async (mocId: string) => {
       if (!mocOptions?.success) return;
@@ -343,7 +337,7 @@ export default function PartialInvoicesEntry() {
     },
     [mocOptions, queryClient, form]
   );
-
+  // Form submission handler for adding/updating an invoice
   const onSubmit = async (values: FormValues) => {
     // If adding a new invoice (not editing) check for duplicate invoice number
     if (!editId) {
@@ -369,7 +363,7 @@ export default function PartialInvoicesEntry() {
       ? updateMutation.mutate({ id: editId, values: invoiceData })
       : addMutation.mutate(invoiceData);
   };
-
+ // Handle editing an existing invoice by populating form fields
   const handleEdit = (invoice: PartialInvoice) => {
     form.reset({
       ...invoice,
@@ -386,7 +380,7 @@ export default function PartialInvoicesEntry() {
   };
 
   const clearFilters = () => setFilters(defaultFilters);
-
+    // Filter invoices based on applied filter criteria
   const filteredInvoices = (invoices?.data ?? []).filter((invoice) => {
     const searchLower = filters.search.toLowerCase();
     const cwoLower = filters.cwo.toLowerCase();
@@ -405,7 +399,7 @@ export default function PartialInvoicesEntry() {
       <ToastContainer position="top-center" autoClose={3000} />
       <div className="flex-grow max-w-7xl mx-auto w-full px-4 py-4">
         <div className="bg-white rounded-lg shadow-lg p-2 h-full flex flex-col">
-          {/* Top Add New Invoice Button (visible when not adding or editing) */}
+       {/* Top Add New Invoice Button (visible when not adding or editing) */}
           {!isAddingNewInvoice && !editId && (
             <div className="mb-4">
               <Button onClick={() => {
@@ -417,7 +411,7 @@ export default function PartialInvoicesEntry() {
             </div>
           )}
 
-          {/* Show form only if adding new invoice or editing an invoice */}
+             {/* Form for adding or editing a partial invoice */}
           {(isAddingNewInvoice || editId) && (
             <div ref={formRef}>
               <>
@@ -596,9 +590,10 @@ export default function PartialInvoicesEntry() {
             </div>
           )}
 
-          <div className="mt-8 flex-1 flex flex-col">
+          <div className="mt-4 flex-1 flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-semibold">Partial Invoices</h4>
+              {/* Title for Partial Invoices List */}
+              <h4 className="gradient-title text-2xl">Partial Invoices List</h4>
               <div className="space-x-2">
                 <Button
                   variant="outline"
@@ -614,10 +609,14 @@ export default function PartialInvoicesEntry() {
                 </Button>
               </div>
             </div>
-            <div className="mt-8 flex-1 flex flex-col">
-  <div className="border rounded-lg">
-    <table className="w-full table-fixed border-collapse">
-      <thead className="sticky top-0 bg-gray-100">
+            <div className="mt-2 flex-1 flex flex-col">
+              <div className="border rounded-lg">
+                                {/* 
+                  Table to load partial invoices.
+                  Each row displays invoice details and actions for editing, deleting, or updating status.
+                */}
+                <table className="w-full table-fixed border-collapse">
+                  <thead className="sticky top-0 bg-gray-100">
                     <tr>
                       <th className="border-b border-gray-200 px-2 py-2 w-40 text-left text-gray-700">MOC Number</th>
                       <th className="border-b border-gray-200 px-2 py-2 w-42 text-left text-gray-700">Short Desc.</th>
@@ -640,7 +639,7 @@ export default function PartialInvoicesEntry() {
                       filteredInvoices.map((invoice) => (
                         <tr
                           key={invoice.id}
-                          className="h-10 even:bg-gray-50 odd:bg-white hover:bg-gray-100 transition-colors duration-150"
+                          className="h-6 even:bg-gray-50 odd:bg-white hover:bg-gray-100 transition-colors duration-150"
                         >
                           {/* String columns with text truncation */}
                           <td className="border-b border-gray-200 px-2 py-2 text-left">
@@ -682,10 +681,10 @@ export default function PartialInvoicesEntry() {
                           </td>
                           <td className="border-b border-gray-200 px-2 py-2 text-center space-x-2">
                             <Button variant="outline" size="icon" onClick={() => handleEdit(invoice)}>
-                              <Edit className="h-3 w-3" />
+                              <Edit className="h-2 w-2" />
                             </Button>
                             <Button variant="destructive" size="icon" onClick={() => setInvoiceToDelete(invoice)}>
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-2 w-2" />
                             </Button>
                           </td>
                         </tr>
@@ -702,7 +701,7 @@ export default function PartialInvoicesEntry() {
           </div>
         </div>
       </div>
-
+     {/* Filter Dialog for applying invoice filters */}
       {mocOptions?.data && (
         <FilterDialog
           open={filtersDialogOpen}
@@ -712,7 +711,10 @@ export default function PartialInvoicesEntry() {
           onApply={setFilters}
         />
       )}
-
+{/* 
+        Dialog to update invoice status.
+        Allows changing status and, if status is "PAID", selecting a receipt date.
+      */}
       {statusDialogInvoice && (
         <Dialog open onOpenChange={() => setStatusDialogInvoice(null)}>
           <DialogContent>
@@ -729,7 +731,9 @@ export default function PartialInvoicesEntry() {
                 </SelectTrigger>
                 <SelectContent>
                   {["PMD", "PMT", "FINANCE", "PAID"].map((status) => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -746,6 +750,7 @@ export default function PartialInvoicesEntry() {
                 Cancel
               </Button>
               <Button
+                disabled={updateStatusMutation.isPending || updateStatusMutation.isPending}
                 onClick={() => {
                   if (newStatus === "PAID" && !newReceiptDate) {
                     toast.error("Receipt date required");
@@ -758,14 +763,21 @@ export default function PartialInvoicesEntry() {
                   });
                 }}
               >
-                Save
+                {updateStatusMutation.isPending || updateStatusMutation.isPending ? (
+                  <Loader2 className="animate-spin h-4 w-4" />
+                ) : (
+                  "Save"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Delete Confirmation Dialog */}
+ {/* 
+        Dialog to delete the invoice.
+        Opens a confirmation dialog before deletion.
+      */}
       {invoiceToDelete && (
         <Dialog open onOpenChange={() => setInvoiceToDelete(null)}>
           <DialogContent>
