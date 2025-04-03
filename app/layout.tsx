@@ -1,6 +1,7 @@
 // app/layout.tsx
 "use client";
 import { useState } from "react";
+import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
@@ -25,6 +26,8 @@ export default function RootLayout({ children }: LayoutProps) {
   return (
     <html lang="en">
       <body className={inter.variable}>
+                {/* Wrap everything with SessionProvider */}
+                <SessionProvider>
         <div style={{ display: 'flex' }}>
           <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
           <QueryProvider>
@@ -41,6 +44,7 @@ export default function RootLayout({ children }: LayoutProps) {
 </main>
           </QueryProvider>
         </div>
+        </SessionProvider>
       </body>
     </html>
   );

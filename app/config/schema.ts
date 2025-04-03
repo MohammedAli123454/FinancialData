@@ -16,6 +16,7 @@ export type RegisterFormValues = z.infer<typeof registerSchema>;
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: varchar('username', { length: 50 }).unique().notNull(),
+  email: varchar("email", { length: 100 }).unique().notNull(),
   password: varchar('password', { length: 100 }).notNull(),
   role: varchar('role', { length: 20 }).notNull().default('user'),
 });
