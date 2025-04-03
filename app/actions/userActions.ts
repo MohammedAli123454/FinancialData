@@ -154,24 +154,60 @@
 
 "use server";
 
-import bcrypt from "bcryptjs";
 import { db } from "@/app/config/db";
 import { users } from "@/app/config/schema";
+import { hash } from "bcryptjs";
+//import { auth } from "@/auth";
+import { z } from "zod";
+import { eq, or } from "drizzle-orm";
+import { useSession, signOut } from "next-auth/react";
 
+const registerSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["Admin", "Super User", "User"]),
+});
 
 export async function createUser(data: FormData) {
-  const username = data.get("username") as string;
-  const email = data.get("email") as string;
-  const password = data.get("password") as string;
-  const role = data.get("role") as string;
-
-  if (!username || !email || !password || !role) {
-    throw new Error("Missing required fields");
+  // Verify admin privileges
+  const { data: session, status } = useSession();
+ 
+  if (!session?.user || session.user.role !== "Admin") {
+    throw new Error("Unauthorized: Only admins can create users");
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  // Validate form data
+  const formData = Object.fromEntries(data.entries());
+  const validatedData = registerSchema.safeParse(formData);
+  
+  if (!validatedData.success) {
+    throw new Error(validatedData.error.errors.map(e => e.message).join(", "));
+  }
 
+  const { username, email, password, role } = validatedData.data;
 
+  // Prevent multiple admins
+  if (role === "Admin") {
+    const existingAdmin = await db.query.users.findFirst({
+      where: eq(users.role, "Admin"),
+    });
+    if (existingAdmin) {
+      throw new Error("Admin account already exists");
+    }
+  }
+
+  // Check for existing user
+  const existingUser = await db.query.users.findFirst({
+    where: or(eq(users.email, email), eq(users.username, username)),
+  });
+
+  if (existingUser) {
+    throw new Error("Username or email already exists");
+  }
+
+  // Create new user
+  const hashedPassword = await hash(password, 12);
   await db.insert(users).values({
     username,
     email,
