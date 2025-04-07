@@ -5,10 +5,10 @@ import { users } from "@/app/config/schema";
 import { hash } from "bcryptjs";
 import { z, ZodError } from "zod";
 import { eq, or } from "drizzle-orm";
-import { auth } from "@/auth";
-// import { useSession, signOut } from "next-auth/react";
+import { getAuthSession } from "@/app/config/auth";
 
-// 1. Define your Zod schema
+type UserRole = "admin" | "Super User" | "User";
+
 const registerSchema = z.object({
   username: z.string().min(1, "Username is required"),
   email: z.string().email("Invalid email"),
@@ -16,48 +16,51 @@ const registerSchema = z.object({
   role: z.enum(["admin", "Super User", "User"]),
 });
 
-
-// import { useSession, signOut } from "next-auth/react";
-//   const { data: session, status } = useSession();
-
-
 export async function POST(request: Request) {
+  let session;
+
   try {
-    // 2. Enforce auth
-    // const session = await getServerSession(authOptions);
-   const serverSession = await auth();
-   console.log("API Route Session:", serverSession); // Add debug logging
-   if (!serverSession?.user || serverSession.user.role !== "admin") {
-      return NextResponse.json(
-        { error: "Unauthorized: Only admins can create users records" },
-        { status: 401 }
-      );
-    }
+    // Separate try/catch for auth errors
+    session = await getAuthSession(request);
+  } catch (authError) {
+    console.error("Authentication error:", authError);
+    return NextResponse.json(
+      { error: "Authentication error. Please sign in again." },
+      { status: 401 }
+    );
+  }
 
-    // 3. Parse form data
-    const data = await request.formData();
-    const raw = Object.fromEntries(data.entries());
-    const normalized = {
-      username: String(raw.username).trim(),
-      email: String(raw.email).trim().toLowerCase(),
-      password: String(raw.password),
-      role: String(raw.role).trim() as "admin" | "Super User" | "User",
-    };
+  // ✅ Now session is accessible here
+  if (!session?.user?.role || session.user.role.toLowerCase() !== "admin") {
+    return NextResponse.json(
+      { error: "Unauthorized: Admin privileges required" },
+      { status: 401 }
+    );
+  }
 
-    // 4. Validate
-    const result = registerSchema.safeParse(normalized);
+  try {
+    const requestData = await request.json();
+
+    const result = registerSchema.safeParse({
+      username: String(requestData.username).trim(),
+      email: String(requestData.email).trim().toLowerCase(),
+      password: String(requestData.password),
+      role: String(requestData.role).trim() as UserRole,
+    });
+
     if (!result.success) {
       return NextResponse.json(
         { error: result.error.errors.map((e) => e.message).join("; ") },
         { status: 400 }
       );
     }
+
     const { username, email, password, role } = result.data;
 
-    // 5. Check duplicates
     const existing = await db.query.users.findFirst({
       where: or(eq(users.email, email), eq(users.username, username)),
     });
+
     if (existing) {
       return NextResponse.json(
         { error: "Username or email already exists" },
@@ -65,26 +68,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. Hash & insert
     const hashed = await hash(password, 12);
     const [newUser] = await db
       .insert(users)
       .values({ username, email, password: hashed, role })
       .returning();
 
-    // 7. Return the created user (omit password!)
-    const { password: _pw, ...userWithoutPw } = newUser;
-    return NextResponse.json(userWithoutPw, { status: 201 });
+    const { password: _, ...userWithoutPassword } = newUser;
+    return NextResponse.json(userWithoutPassword, { status: 201 });
+
   } catch (err) {
-    console.error("Error in /api/users:", err);
+    console.error("API Error:", err);
+
     if (err instanceof ZodError) {
       return NextResponse.json(
         { error: err.errors.map((e) => e.message).join("; ") },
         { status: 400 }
       );
     }
+
     return NextResponse.json(
-      { error: "Internal server error came" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

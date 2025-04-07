@@ -1,8 +1,7 @@
-// auth.tss
+// auth.ts (at root level)
+import { getServerSession } from "auth/server";
+import { authOptions } from "@/auth-options";
 
-
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/config/auth-options"
-export async function auth() {
-  return await getServerSession(authOptions);
+export async function auth(request: Request) {
+  return await getServerSession(authOptions, request);
 }

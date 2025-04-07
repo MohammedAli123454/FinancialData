@@ -1,31 +1,17 @@
-// config/auth-options.ts
-import type { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+// /app/config/auth.js
+
+import Auth from "auth";
+import CredentialsProvider from "auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { db } from "@/app/config/db";
-import { users } from "@/app/config/schema";
+import { db } from "./db";
+import { users } from "./schema";
 import { eq } from "drizzle-orm";
-import type { JWT } from "next-auth/jwt";
+import { getServerSession } from "auth/server";
 
-// Extended type declarations
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      email: string;
-      role: string;
-    };
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id?: string;
-    role?: string;
-  }
-}
-
-export const authOptions: NextAuthOptions = {
+/**
+ * @type {import("auth").AuthOptions}
+ */
+export const auth = {
   session: { strategy: "jwt" },
   providers: [
     CredentialsProvider({
@@ -39,11 +25,10 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const userRecord = await db
+        const [userRecord] = await db
           .select()
           .from(users)
-          .where(eq(users.email, credentials.email))
-          .then((res) => res[0]);
+          .where(eq(users.email, credentials.email));
 
         if (
           !userRecord ||
@@ -70,11 +55,25 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = token.id;
+        session.user.email = token.email;
+        session.user.role = token.role;
       }
       return session;
     },
   },
-
 };
+
+// Export the Auth.js handler for API routes
+const handler = Auth(auth);
+export { handler as GET, handler as POST };
+
+/**
+ * Convenience wrapper to fetch the session on the server.
+ * Pass in the Request so cookies and headers can be read.
+ *
+ * @param {Request} request
+ */
+export async function getAuthSession(request) {
+  return getServerSession(auth, request);
+}

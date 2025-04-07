@@ -1,7 +1,7 @@
 // app/layout.tsx
 "use client";
 import { useState } from "react";
-import { SessionProvider } from "next-auth/react";
+//import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
@@ -19,32 +19,31 @@ interface LayoutProps {
 export default function RootLayout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
     <html lang="en">
       <body className={inter.variable}>
-                {/* Wrap everything with SessionProvider */}
-                <SessionProvider>
-        <div style={{ display: 'flex' }}>
-          <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+        {/* Wrap ALL providers at the root level */}
+        {/* <SessionProvider
+          refetchInterval={5 * 60}  // Refresh session every 5 minutes
+          refetchOnWindowFocus={true}
+        > */}
           <QueryProvider>
-          <main
-  style={{
-    flex: 1,
-    padding: '1rem',
-    transition: 'width 0.3s, margin-left 0.3s',
-    marginLeft: sidebarOpen ? '16rem' : '0',
-    width: sidebarOpen ? 'calc(100% - 16rem)' : '100%',
-  }}
->
-  {children}
-</main>
+            <div className="flex">
+              <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+              <main
+                className="flex-1 p-4 transition-all duration-300"
+                style={{
+                  marginLeft: sidebarOpen ? '16rem' : '0',
+                  width: sidebarOpen ? 'calc(100% - 16rem)' : '100%',
+                }}
+              >
+                {children}
+              </main>
+            </div>
           </QueryProvider>
-        </div>
-        </SessionProvider>
+        {/* </SessionProvider> */}
       </body>
     </html>
   );

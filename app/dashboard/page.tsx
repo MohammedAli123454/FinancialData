@@ -1,6 +1,6 @@
 "use client"; // Must be the first line
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut } from "auth/react";
 
 export default function Dashboard() { // Use PascalCase for component name
   const { data: session, status } = useSession();
@@ -11,6 +11,7 @@ export default function Dashboard() { // Use PascalCase for component name
   return (
     <div className="p-8">
       <h1 className="text-2xl mb-4">Welcome, {session.user.email}</h1>
+      <h1 className="text-2xl mb-4">Welcome, {session.user.role}</h1>
       <button
         onClick={() => signOut()}
         className="py-2 px-4 bg-red-500 hover:bg-red-600 text-white rounded"
