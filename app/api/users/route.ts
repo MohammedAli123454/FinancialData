@@ -1,94 +1,58 @@
 // app/api/users/route.ts
-import { NextResponse } from "next/server";
-import { db } from "@/app/config/db";
-import { users } from "@/app/config/schema";
-import { hash } from "bcryptjs";
-import { z, ZodError } from "zod";
+import { db } from '@/app/config/db';
+import { users } from '@/app/config/schema';
+import { hashPassword } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { eq, or } from "drizzle-orm";
-import { getAuthSession } from "@/app/config/auth";
+import { z } from 'zod';
 
-type UserRole = "admin" | "Super User" | "User";
-
-const registerSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  email: z.string().email("Invalid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["admin", "Super User", "User"]),
+const signUpSchema = z.object({
+  username: z.string().min(3),
+  email: z.string().email(),
+  password: z.string().min(8),
+  role: z.enum(['admin', 'Super User', 'User']).optional().default('User')
 });
 
-export async function POST(request: Request) {
-  let session;
-
+export async function POST(req: Request) {
   try {
-    // Separate try/catch for auth errors
-    session = await getAuthSession(request);
-  } catch (authError) {
-    console.error("Authentication error:", authError);
-    return NextResponse.json(
-      { error: "Authentication error. Please sign in again." },
-      { status: 401 }
-    );
-  }
-
-  // ✅ Now session is accessible here
-  if (!session?.user?.role || session.user.role.toLowerCase() !== "admin") {
-    return NextResponse.json(
-      { error: "Unauthorized: Admin privileges required" },
-      { status: 401 }
-    );
-  }
-
-  try {
-    const requestData = await request.json();
-
-    const result = registerSchema.safeParse({
-      username: String(requestData.username).trim(),
-      email: String(requestData.email).trim().toLowerCase(),
-      password: String(requestData.password),
-      role: String(requestData.role).trim() as UserRole,
-    });
-
-    if (!result.success) {
+    const body = await req.json();
+    const validation = signUpSchema.safeParse(body);
+    
+    if (!validation.success) {
       return NextResponse.json(
-        { error: result.error.errors.map((e) => e.message).join("; ") },
+        { error: validation.error.errors[0].message },
         { status: 400 }
       );
     }
 
-    const { username, email, password, role } = result.data;
+    const { username, email, password, role } = validation.data;
 
-    const existing = await db.query.users.findFirst({
-      where: or(eq(users.email, email), eq(users.username, username)),
+    // Check existing user
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.username, username),
     });
 
-    if (existing) {
+    if (existingUser) {
       return NextResponse.json(
-        { error: "Username or email already exists" },
+        { error: "Username already exists" },
         { status: 409 }
       );
     }
 
-    const hashed = await hash(password, 12);
-    const [newUser] = await db
-      .insert(users)
-      .values({ username, email, password: hashed, role })
-      .returning();
+    const hashedPassword = await hashPassword(password);
+    
+    const newUser = await db.insert(users).values({ 
+      username, 
+      email, 
+      password: hashedPassword, 
+      role 
+    }).returning();
 
-    const { password: _, ...userWithoutPassword } = newUser;
-    return NextResponse.json(userWithoutPassword, { status: 201 });
-
-  } catch (err) {
-    console.error("API Error:", err);
-
-    if (err instanceof ZodError) {
-      return NextResponse.json(
-        { error: err.errors.map((e) => e.message).join("; ") },
-        { status: 400 }
-      );
-    }
-
+    return NextResponse.json(newUser, { status: 201 });
+  } catch (error) {
+    console.error("User creation error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

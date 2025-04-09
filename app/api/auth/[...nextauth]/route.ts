@@ -1,7 +1,4 @@
-// /app/api/auth/[...auth]/route.ts
+//app/api/auth/[...nextauth]/route.ts
+import { GET, POST } from '@/auth';
 
-import { auth } from "@/app/config/auth";
-import Auth from "auth";
-
-const handler = Auth(auth);
-export { handler as GET, handler as POST };
+export { GET, POST };
