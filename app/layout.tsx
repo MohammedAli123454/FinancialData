@@ -1,7 +1,6 @@
 // app/layout.tsx
 "use client";
 import { useState } from "react";
-//import { SessionProvider } from "next-auth/react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
@@ -25,10 +24,6 @@ export default function RootLayout({ children }: LayoutProps) {
     <html lang="en">
       <body className={inter.variable}>
         {/* Wrap ALL providers at the root level */}
-        {/* <SessionProvider
-          refetchInterval={5 * 60}  // Refresh session every 5 minutes
-          refetchOnWindowFocus={true}
-        > */}
           <QueryProvider>
             <div className="flex">
               <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
@@ -43,7 +38,6 @@ export default function RootLayout({ children }: LayoutProps) {
               </main>
             </div>
           </QueryProvider>
-        {/* </SessionProvider> */}
       </body>
     </html>
   );

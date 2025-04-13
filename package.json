@@ -9,8 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@auth/core": "^0.38.0",
-    "@auth/nextjs": "^0.0.0-380f8d56",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@hookform/resolvers": "^3.10.0",
@@ -53,7 +51,7 @@
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.417.0",
-    "next": "15.0.3",
+    "next": "^15.3.0",
     "next-themes": "^0.3.0",
     "number-to-words": "^1.2.4",
     "pg": "^8.12.0",
