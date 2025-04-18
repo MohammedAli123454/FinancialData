@@ -26,9 +26,9 @@ export const users = pgTable('users', {
   username: varchar('username', { length: 50 }).unique().notNull(),
   email: varchar("email", { length: 100 }).unique().notNull(),
   password: varchar('password', { length: 100 }).notNull(),
-  role: text('role', { enum: ["admin", "Super User", "User"] })
+  role: text('role', { enum: ["admin", "superuser", "user"] })
     .notNull()
-    .default("User"),
+    .default("user"),
 });
 
 export const mocs = pgTable("mocs", {
