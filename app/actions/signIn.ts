@@ -2,49 +2,41 @@
 
 import { db } from '@/app/config/db';
 import { users } from '@/app/config/schema';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { cookies } from 'next/headers';
 import { eq } from 'drizzle-orm';
-import { comparePassword, generateToken, setAuthCookie } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { z } from 'zod';
 
-// Define the schema for sign in data if not defined already
-export const signInSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+const JWT_SECRET = process.env.JWT_SECRET!;
+const COOKIE_NAME = 'auth_token';
+
+export async function signinAction(formData: FormData) {
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+
+  if (!email || !password) throw new Error('Email and password are required');
+
+  const user = await db.select().from(users).where(eq(users.email, email));
+  if (user.length === 0) throw new Error('Invalid email or password');
+
+  const isValid = await bcrypt.compare(password, user[0].password);
+  if (!isValid) throw new Error('Invalid email or password');
+
+  const token = jwt.sign(
+    { id: user[0].id, username: user[0].username, role: user[0].role },
+    JWT_SECRET,
+    { expiresIn: '2h' }
+  );
+
+  const cookieStore = await cookies();
+cookieStore.set(COOKIE_NAME, token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: 60 * 60 * 2,
+  path: '/',
 });
 
-export type SignInData = z.infer<typeof signInSchema>;
-
-export async function signIn(data: z.infer<typeof signInSchema>) {
-  try {
-    // Validate the incoming data using zod
-    const parsedData = signInSchema.parse(data);
-    
-    // Query user by email
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, parsedData.email))
-      .limit(1);
-
-    if (!user) {
-      throw new Error('Invalid credentials');
-    }
-
-    // Compare password with stored hash
-    const passwordIsValid = await comparePassword(parsedData.password, user.password);
-    if (!passwordIsValid) {
-      throw new Error('Invalid credentials');
-    }
-
-    // Generate token and set authentication cookie
-    const token = generateToken(user);
-    await setAuthCookie(token);
-
-    // Redirect to the protected dashboard
-    redirect('/dashboard');
-  } catch (error) {
-    // Return or rethrow error depending on your error handling strategy
-    return { error: error instanceof Error ? error.message : 'Authentication failed' };
-  }
+  redirect('/dashboard');
 }
