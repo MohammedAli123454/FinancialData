@@ -20,20 +20,20 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  return (
-    <div className="flex min-h-screen">
-      <div className="flex-1">
-        <div className="flex justify-end p-4">
-          <Button
-            variant="outline"
-            disabled={isPending}
-            onClick={() => startTransition(() => signoutAction())}
-          >
-            {isPending ? 'Signing out...' : 'Sign Out'}
-          </Button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
+//   return (
+//     <div className="flex min-h-screen">
+//       <div className="flex-1">
+//         <div className="flex justify-end p-4">
+//           <Button
+//             variant="outline"
+//             disabled={isPending}
+//             onClick={() => startTransition(() => signoutAction())}
+//           >
+//             {isPending ? 'Signing out...' : 'Sign Out'}
+//           </Button>
+//         </div>
+//         {children}
+//       </div>
+//     </div>
+//   );
+ }
