@@ -38,5 +38,7 @@ cookieStore.set(COOKIE_NAME, token, {
   path: '/',
 });
 
-  redirect('/dashboard');
+  // redirect('/dashboard');
+  redirect('/');
+
 }
