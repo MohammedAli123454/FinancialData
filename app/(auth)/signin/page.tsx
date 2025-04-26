@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-// import { signinAction } from '@/app/actions/signIn'
-import { signinAction } from '@/app/actions/signin'
+// import { signinAction } from '@/app/actions/signin'
+import { signinAction } from '../../actions/signin'
 export default function SigninPage() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
