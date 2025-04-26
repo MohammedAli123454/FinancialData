@@ -95,3 +95,49 @@ export async function POST(request: Request) {
     );
   }
 }
+
+
+// PUT partial update
+export const PUT = async (
+  req: Request,
+  { params }: { params: { id: string } }
+): Promise<Response> => {
+  try {
+    const id = parseInt(params.id);
+    if (isNaN(id)) {
+      return NextResponse.json({ success: false, message: 'Invalid ID' }, { status: 400 });
+    }
+
+    const payload = await req.json();
+    const parsed = invoiceSchema.partial().safeParse(payload);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, errors: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const [exists] = await db
+      .select()
+      .from(partialInvoices)
+      .where(eq(partialInvoices.id, id));
+    if (!exists) {
+      return NextResponse.json({ success: false, message: 'Invoice not found' }, { status: 404 });
+    }
+
+    const updateData: Record<string, any> = {};
+    Object.entries(parsed.data).forEach(([key, val]) => {
+      if (['amount', 'vat', 'retention', 'payable'].includes(key) && typeof val === 'number') {
+        updateData[key] = val.toFixed(2);
+      } else {
+        updateData[key] = val;
+      }
+    });
+
+    await db.update(partialInvoices).set(updateData).where(eq(partialInvoices.id, id));
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+  }
+};

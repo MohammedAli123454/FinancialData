@@ -398,7 +398,8 @@ export default function InvoicesStatus() {
     const paymentReceived = filteredData
       .flatMap(moc => moc.invoices)
       .filter(inv => inv?.invoiceStatus === "PAID")
-      .reduce((sum, inv) => sum + (inv?.amount || 0) - (inv?.retention || 0), 0);
+      // .reduce((sum, inv) => sum + (inv?.amount || 0) - (inv?.retention || 0), 0);
+      .reduce((sum, inv) => sum + (inv?.amount || 0), 0);
   
     const balancePayment = totalInvoicesSubmitted - paymentReceived;
   
