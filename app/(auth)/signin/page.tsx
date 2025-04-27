@@ -37,7 +37,7 @@ export default function SigninPage() {
         }
 
         // on success, redirect to dashboard (or home)
-        router.push('/');
+        router.push('/dashboard');
       } catch (err: any) {
         setError(err.message);
       }
