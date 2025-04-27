@@ -1,20 +1,43 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { signinAction } from '@/app/actions/signin';
+
 export default function SigninPage() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  function handleSignin(formData: FormData) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
     startTransition(async () => {
-      setError(null);
       try {
-        await signinAction(formData);
+        const res = await fetch('/api/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.get('email'),
+            password: formData.get('password'),
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Something went wrong');
+        }
+
+        // on success, redirect to dashboard (or home)
+        router.push('/');
       } catch (err: any) {
         setError(err.message);
       }
@@ -23,7 +46,9 @@ export default function SigninPage() {
 
   return (
     <Card className="max-w-md mx-auto mt-20">
-      <CardHeader><CardTitle>Sign In</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>Sign In</CardTitle>
+      </CardHeader>
       <CardContent>
         {error && (
           <Alert variant="destructive">
@@ -31,7 +56,7 @@ export default function SigninPage() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        <form action={handleSignin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium">Email</label>
             <Input id="email" name="email" type="email" required />
@@ -40,7 +65,9 @@ export default function SigninPage() {
             <label htmlFor="password" className="block text-sm font-medium">Password</label>
             <Input id="password" name="password" type="password" required />
           </div>
-          <Button type="submit" disabled={isPending}>{isPending ? 'Signing in...' : 'Sign In'}</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? 'Signing in...' : 'Sign In'}
+          </Button>
         </form>
       </CardContent>
     </Card>
