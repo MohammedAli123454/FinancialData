@@ -40,7 +40,7 @@ export async function signupAction(formData: FormData) {
   // Prevent duplicate emails
   const existingUser = await db.select().from(users).where(eq(users.email, email));
   if (existingUser.length > 0) {
-    throw new Error('User already exists');
+    throw new Error('User already exists!!');
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
