@@ -1,11 +1,19 @@
+// eslint.config.mjs
+
+// Change this:
 import nextEslintConfig from "next/eslint";
 
+// To this:
+import nextEslintConfig from "eslint-config-next";
+
 const eslintConfig = [
-  ...nextEslintConfig,
+  // Spread in the Next.js shareable config
+  nextEslintConfig,
   {
-    // Optional: Add custom rules here
+    // Your custom overrides go here
     rules: {
-      // Example: "@typescript-eslint/no-explicit-any": "warn"
+      // Example:
+      // "@typescript-eslint/no-explicit-any": "warn",
     },
   },
 ];
