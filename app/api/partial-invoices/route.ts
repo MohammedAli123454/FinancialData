@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from "next/server";  
 import { db } from '@/app/config/db';
 import { partialInvoices, mocs } from '@/app/config/schema';
 import { eq } from 'drizzle-orm';
@@ -98,17 +98,22 @@ export async function POST(request: Request) {
 
 
 // PUT partial update
-export const PUT = async (
-  req: Request,
-  { params }: { params: { id: string } }
-): Promise<Response> => {
+export async function PUT(request: NextRequest) {
   try {
-    const id = parseInt(params.id);
+    // 1) Parse ID from the URL
+    const segments = request.nextUrl.pathname.split("/");
+    const id = parseInt(segments.at(-1)!, 10);
     if (isNaN(id)) {
-      return NextResponse.json({ success: false, message: 'Invalid ID' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid ID" },
+        { status: 400 }
+      );
     }
 
-    const payload = await req.json();
+    // 2) Read the JSON body from *request*, not req
+    const payload = await request.json();
+
+    // 3) Validate with Zod
     const parsed = invoiceSchema.partial().safeParse(payload);
     if (!parsed.success) {
       return NextResponse.json(
@@ -117,27 +122,40 @@ export const PUT = async (
       );
     }
 
+    // 4) Ensure the record exists
     const [exists] = await db
       .select()
       .from(partialInvoices)
       .where(eq(partialInvoices.id, id));
     if (!exists) {
-      return NextResponse.json({ success: false, message: 'Invoice not found' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: "Invoice not found" },
+        { status: 404 }
+      );
     }
 
+    // 5) Build your update object
     const updateData: Record<string, any> = {};
-    Object.entries(parsed.data).forEach(([key, val]) => {
-      if (['amount', 'vat', 'retention', 'payable'].includes(key) && typeof val === 'number') {
+    for (const [key, val] of Object.entries(parsed.data)) {
+      if (["amount", "vat", "retention", "payable"].includes(key) && typeof val === "number") {
         updateData[key] = val.toFixed(2);
       } else {
         updateData[key] = val;
       }
-    });
+    }
 
-    await db.update(partialInvoices).set(updateData).where(eq(partialInvoices.id, id));
+    // 6) Perform the update
+    await db
+      .update(partialInvoices)
+      .set(updateData)
+      .where(eq(partialInvoices.id, id));
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: err.message },
+      { status: 500 }
+    );
   }
-};
+}
