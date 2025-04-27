@@ -3,12 +3,12 @@ import { db } from '@/app/config/db';
 import { mocs } from '@/app/config/schema';
 import { eq } from 'drizzle-orm';
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest) {
   try {
-    const id = parseInt(params.id);
+    // Extract `id` from the pathname, e.g. "/api/mocs/42"
+    const segments = request.nextUrl.pathname.split('/');
+    const id = parseInt(segments.at(-1) || '', 10);
+
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid ID" },
@@ -32,12 +32,11 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest) {
   try {
-    const id = parseInt(params.id);
+    const segments = request.nextUrl.pathname.split('/');
+    const id = parseInt(segments.at(-1) || '', 10);
+
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid ID" },
