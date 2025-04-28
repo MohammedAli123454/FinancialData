@@ -1,10 +1,14 @@
-// middleware.ts at the project root
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import * as jwt from 'jsonwebtoken'
+import { jwtVerify } from 'jose'
 
 const JWT_SECRET = process.env.JWT_SECRET!
 const COOKIE_NAME = 'auth_token'
+
+// Create secret key
+function getSecretKey() {
+  return new TextEncoder().encode(JWT_SECRET)
+}
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value
@@ -14,8 +18,10 @@ export async function middleware(req: NextRequest) {
 
   let payload: { role: string }
   try {
-    payload = jwt.verify(token, JWT_SECRET) as { role: string }
-  } catch {
+    const { payload: verifiedPayload } = await jwtVerify(token, getSecretKey())
+    payload = verifiedPayload as { role: string }
+  } catch (err) {
+    console.error('JWT verification error:', err)
     return new NextResponse('Invalid token', { status: 401 })
   }
 
@@ -25,8 +31,8 @@ export async function middleware(req: NextRequest) {
   if (method === 'DELETE' && role !== 'admin') {
     return new NextResponse('Forbidden: delete requires admin', { status: 403 })
   }
-  if (['POST','PUT','PATCH'].includes(method) &&
-      !['admin','superuser'].includes(role)) {
+  if (['POST', 'PUT', 'PATCH'].includes(method) &&
+      !['admin', 'superuser'].includes(role)) {
     return new NextResponse('Forbidden: write requires admin or superuser', { status: 403 })
   }
 
@@ -34,14 +40,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-    matcher: [
-      /*
-       * Match any path except:
-       *  • /           (the empty path)
-       *  • /api/signin
-       *  • /signin
-       *  • ...etc
-       */
-      '/((?!$|api/signin|signin|_next|favicon\\.ico).*)',
-    ],
-  }
+  matcher: ['/((?!$|api/signin|signin|_next|favicon\\.ico).*)'],
+}

@@ -1,4 +1,3 @@
-// app/api/signin/route.ts
 import { NextResponse } from 'next/server';
 import { db } from '@/app/config/db';
 import { users } from '@/app/config/schema';
@@ -12,21 +11,19 @@ const COOKIE_NAME = 'auth_token';
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
-
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const result = await db
+    const [user] = await db
       .select()
       .from(users)
       .where(eq(users.email, email));
 
-    if (result.length === 0) {
+    if (!user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const user = result[0];
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
@@ -39,12 +36,19 @@ export async function POST(request: Request) {
       { expiresIn: '2h' }
     );
 
-    // Set cookie
+    // Build response and set cookie via helper
     const isProd = process.env.NODE_ENV === 'production';
-    const cookie = `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${2 * 60 * 60}${isProd ? '; Secure' : ''}`;
-
     const res = NextResponse.json({ message: 'Signed in successfully' });
-    res.headers.append('Set-Cookie', cookie);
+    res.cookies.set({
+      name: COOKIE_NAME,
+      value: token,
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 2 * 60 * 60,
+      secure: isProd,
+    });
+
     return res;
 
   } catch (err: any) {

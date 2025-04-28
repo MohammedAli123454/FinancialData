@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -113,15 +114,40 @@ const fetchPartialInvoices = async () => {
   return response.json();
 };
 
+
+
+
+
 const createPartialInvoice = async (data: any) => {
   const response = await fetch('/api/partial-invoices', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });
-  if (!response.ok) throw new Error('Failed to create invoice');
+  
+  if (!response.ok) {
+    // Handle non-JSON responses
+    const contentType = response.headers.get('content-type');
+    let errorMessage = 'Failed to create invoice';
+    
+    try {
+      errorMessage = contentType?.includes('application/json')
+        ? (await response.json()).message
+        : await response.text();
+    } catch (e) {
+      console.error('Error parsing error response:', e);
+    }
+
+    const error = new Error(errorMessage);
+    (error as any).status = response.status;
+    throw error;
+  }
+  
   return response.json();
 };
+
+
+
 
 const updatePartialInvoice = async ({ id, data }: UpdateInvoiceParams) => {
   const response = await fetch(`/api/partial-invoices/${id}`, {
@@ -132,6 +158,7 @@ const updatePartialInvoice = async ({ id, data }: UpdateInvoiceParams) => {
   if (!response.ok) throw new Error('Failed to update invoice');
   return response.json();
 };
+
 
 
 
@@ -157,7 +184,7 @@ export default function PartialInvoicesEntry() {
   const [startDate, endDate] = filters.dateRange;
   const formRef = useRef<HTMLDivElement>(null);
   const form = useForm<FormValues>({ resolver: zodResolver(formSchema), defaultValues: formDefaults });
-  
+  const router = useRouter();
   // Queries
   const { data: mocOptions, isLoading: mocLoading } = useQuery<ApiResponse<MocOption[]>>({ 
     queryKey: ["mocOptions"], 
@@ -178,7 +205,17 @@ export default function PartialInvoicesEntry() {
       form.reset(formDefaults);
       setIsAddingNewInvoice(false);
     },
-    onError: (error: any) => toast.error(error.message)
+    onError: (error: any) => {
+      if (error.status === 401) {
+        toast.error("Session expired. Please sign in again.");
+        router.push("/signin");
+      } else if (error.status === 403) {
+        toast.error(error.message || "You don't have permission to perform this action");
+      } else {
+        toast.error(error.message || "An unexpected error occurred");
+      }
+    },
+
   });
 
   const updateMutation = useMutation({
