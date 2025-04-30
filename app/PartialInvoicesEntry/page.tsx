@@ -11,6 +11,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+import { useFiltersStore } from "@/app/stores/filters-store";
+import { FiltersDialog } from "@/components/FiltersDialog";
+
 import {
   Select,
   SelectContent,
@@ -161,6 +165,11 @@ const deletePartialInvoice = async (id: number) => {
 
 export default function PartialInvoicesEntry() {
   const queryClient = useQueryClient();
+    // Zustand filters
+    const applied = useFiltersStore((s) => s.applied);
+    const resetAll = useFiltersStore((s) => s.resetAll);
+    const [startDate, endDate] = applied.dateRange;
+
   const [editId, setEditId] = useState<number|null>(null);
   const [filters, setFilters] = useState<FilterValues>(defaultFilters);
   const [statusDialogInvoice, setStatusDialogInvoice] = useState<PartialInvoice|null>(null);
@@ -170,7 +179,7 @@ export default function PartialInvoicesEntry() {
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
   const [isAddingNewInvoice, setIsAddingNewInvoice] = useState(false);
   const [localFilters, setLocalFilters] = useState<FilterValues>(filters);
-  const [startDate, endDate] = filters.dateRange;
+ 
   const formRef = useRef<HTMLDivElement>(null);
   const form = useForm<FormValues>({ resolver: zodResolver(formSchema), defaultValues: formDefaults });
   const router = useRouter();
@@ -291,18 +300,24 @@ export default function PartialInvoicesEntry() {
     setIsAddingNewInvoice(true);
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-  const clearFilters = () => setFilters(defaultFilters);
-  const filteredInvoices = (invoices?.data || []).filter(invoice => {
-    const searchLower = filters.search.toLowerCase();
-    const cwoLower = filters.cwo.toLowerCase();
-    const invoiceDate = new Date(invoice.invoiceDate);
-    const dateInRange = !startDate || !endDate ? true : invoiceDate >= startDate && invoiceDate <= endDate;
-    return dateInRange &&
-      (invoice.invoiceNo.toLowerCase().includes(searchLower) || invoice.mocNo.toLowerCase().includes(searchLower)) &&
-      (cwoLower === "" || invoice.invoiceNo.toLowerCase().includes(cwoLower)) &&
-      (filters.moc === "all" || invoice.mocNo === filters.moc) &&
-      (filters.status === "all" || invoice.invoiceStatus === filters.status);
+
+  const filteredInvoices = (invoices?.data || []).filter((inv) => {
+    const invDate = new Date(inv.invoiceDate);
+    const inDateRange =
+      (!startDate || !endDate) ||
+      (invDate >= startDate && invDate <= endDate);
+
+    return (
+      inDateRange &&
+      (inv.invoiceNo.toLowerCase().includes(applied.search.toLowerCase()) ||
+        inv.mocNo.toLowerCase().includes(applied.search.toLowerCase())) &&
+      (applied.cwo === "" ||
+        inv.invoiceNo.toLowerCase().includes(applied.cwo.toLowerCase())) &&
+      (applied.moc === "all" || inv.mocNo === applied.moc) &&
+      (applied.status === "all" || inv.invoiceStatus === applied.status)
+    );
   });
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <ToastContainer position="top-center" autoClose={3000} />
@@ -393,12 +408,12 @@ export default function PartialInvoicesEntry() {
             <div className="flex justify-between items-center mb-4">
               <h4 className="gradient-title text-2xl">Partial Invoices List</h4>
               <div className="space-x-2">
-                <Button variant="outline" onClick={clearFilters} type="button" disabled={JSON.stringify(filters) === JSON.stringify(defaultFilters)}>
+                <Button variant="outline" onClick={resetAll}>
                   Clear Filters
                 </Button>
-                <Button variant="outline" onClick={() => setFiltersDialogOpen(true)}>
-                  <CalendarIcon className="h-4 w-4 mr-2" /> Filters
-                </Button>
+                <FiltersDialog
+                  mocOptions={mocOptions?.data ?? []}
+                />
               </div>
             </div>
             <div className="mt-2 flex-1 flex flex-col">
@@ -469,77 +484,6 @@ export default function PartialInvoicesEntry() {
           </div>
         </div>
       </div>
-          {/* Filters Dialog for applying invoice list filters */}
-      <Dialog open={filtersDialogOpen} onOpenChange={setFiltersDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Filter Invoices</DialogTitle>
-            <DialogDescription>Enter filter criteria including search term, CWO, MOC number, status and a date range.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">Search Term</Label>
-              <Input placeholder="Search by invoice or MOC number..." value={localFilters.search} onChange={e => setLocalFilters(prev => ({ ...prev, search: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">CWO Number</Label>
-              <Input placeholder="Enter CWO number..." value={localFilters.cwo} onChange={e => setLocalFilters(prev => ({ ...prev, cwo: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">MOC Number</Label>
-              <Select value={localFilters.moc} onValueChange={value => setLocalFilters(prev => ({ ...prev, moc: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select MOC" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {mocOptions?.data?.map(mocOption => (
-                    <SelectItem key={mocOption.id} value={mocOption.mocNo}>
-                      {mocOption.mocNo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">Invoice Status</Label>
-              <Select value={localFilters.status} onValueChange={value => setLocalFilters(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {["PMD", "PMT", "FINANCE", "PAID"].map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">Date Range</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline">
-                    {localFilters.dateRange[0]
-                      ? localFilters.dateRange[1]
-                        ? `${format(localFilters.dateRange[0], "MMM dd")} - ${format(localFilters.dateRange[1], "MMM dd")}`
-                        : format(localFilters.dateRange[0], "MMM dd")
-                      : "Select Date Range"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar mode="range" selected={{ from: localFilters.dateRange[0] || undefined, to: localFilters.dateRange[1] || undefined }} onSelect={range => setLocalFilters(prev => ({ ...prev, dateRange: [range?.from || null, range?.to || null] }))} numberOfMonths={2} />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-          <DialogFooter className="space-x-2">
-            <Button variant="outline" onClick={() => setLocalFilters(defaultFilters)}>Clear Filters</Button>
-            <Button variant="outline" onClick={() => setFiltersDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => { setFilters(localFilters); setFiltersDialogOpen(false); }}>Apply Filters</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
            {/* This Dialog opens when user tries to chnage the status of the invoice */}
       {statusDialogInvoice && (
         <Dialog open onOpenChange={() => setStatusDialogInvoice(null)}>
