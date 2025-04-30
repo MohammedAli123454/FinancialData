@@ -8,8 +8,6 @@ import Sidebar from '@/components/Sidebar';
 import { QueryProvider } from '@/providers/query-provider';
 import { useCurrentUser } from '@/app/hooks/useCurrentUser';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
@@ -45,7 +43,7 @@ export default function RootLayout({ children }: LayoutProps) {
         <QueryProvider>
           <div className="flex">
             {/* Only show the Sidebar if we have a user */}
-            {user && (
+            {!!user && (
               <Sidebar
                 isOpen={sidebarOpen}
                 toggleSidebar={toggleSidebar}

@@ -126,24 +126,9 @@ const createPartialInvoice = async (data: any) => {
   });
   
   if (!response.ok) {
-    // Handle non-JSON responses
-    const contentType = response.headers.get('content-type');
-    let errorMessage = 'Failed to create invoice';
-    
-    try {
-      errorMessage = contentType?.includes('application/json')
-        ? (await response.json()).message
-        : await response.text();
-    } catch (e) {
-      console.error('Error parsing error response:', e);
-    }
-
-    const error = new Error(errorMessage);
-    (error as any).status = response.status;
-    throw error;
+    const errorPayload = await response.json()
+    throw new Error(errorPayload.message)
   }
-  
-  return response.json();
 };
 
 
@@ -155,8 +140,10 @@ const updatePartialInvoice = async ({ id, data }: UpdateInvoiceParams) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });
-  if (!response.ok) throw new Error('Failed to update invoice');
-  return response.json();
+  if (!response.ok) {
+    const errorPayload = await response.json()
+    throw new Error(errorPayload.message)
+  }
 };
 
 
@@ -166,8 +153,10 @@ const deletePartialInvoice = async (id: number) => {
   const response = await fetch(`/api/partial-invoices/${id}`, {
     method: 'DELETE'
   });
-  if (!response.ok) throw new Error('Failed to delete invoice');
-  return response.json();
+  if (!response.ok) {
+    const errorPayload = await response.json()
+    throw new Error(errorPayload.message)
+  }
 };
 
 export default function PartialInvoicesEntry() {
@@ -205,17 +194,7 @@ export default function PartialInvoicesEntry() {
       form.reset(formDefaults);
       setIsAddingNewInvoice(false);
     },
-    onError: (error: any) => {
-      if (error.status === 401) {
-        toast.error("Session expired. Please sign in again.");
-        router.push("/signin");
-      } else if (error.status === 403) {
-        toast.error(error.message || "You don't have permission to perform this action");
-      } else {
-        toast.error(error.message || "An unexpected error occurred");
-      }
-    },
-
+    onError: (error: any) => toast.error(error.message)
   });
 
   const updateMutation = useMutation({

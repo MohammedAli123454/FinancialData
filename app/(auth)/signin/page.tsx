@@ -2,10 +2,19 @@
 
 import { useState, useTransition, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+} from '@/components/ui/alert';
 
 export default function SigninPage() {
   const [isPending, startTransition] = useTransition();
@@ -17,30 +26,26 @@ export default function SigninPage() {
     setError(null);
 
     const form = e.currentTarget;
-    const formData = new FormData(form);
+    const { email, password } = Object.fromEntries(new FormData(form));
 
-    startTransition(async () => {
-      try {
-        const res = await fetch('/api/signin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: formData.get('email'),
-            password: formData.get('password'),
-          }),
-        });
+    let data: any;
+    try {
+      const res = await fetch('/api/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Something went wrong');
+    } catch (err: any) {
+      return setError(err.message);
+    }
 
-        const data = await res.json();
+    // only the navigation is a transition
+    startTransition(() => {
+       router.push('/dashboard');
 
-        if (!res.ok) {
-          throw new Error(data.error || 'Something went wrong');
-        }
 
-        // on success, redirect to dashboard (or home)
-        router.push('/dashboard');
-      } catch (err: any) {
-        setError(err.message);
-      }
     });
   }
 
@@ -58,11 +63,15 @@ export default function SigninPage() {
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium">
+              Email
+            </label>
             <Input id="email" name="email" type="email" required />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium">
+              Password
+            </label>
             <Input id="password" name="password" type="password" required />
           </div>
           <Button type="submit" disabled={isPending}>
