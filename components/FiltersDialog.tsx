@@ -1,7 +1,5 @@
 // components/FiltersDialog.tsx
 "use client";
-
-// import { useFiltersStore, DateRange } from "@/stores/filters-store";
 import { useFiltersStore, DateRange } from "@/app/stores/filters-store"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,16 +28,14 @@ import { CalendarIcon } from "lucide-react";
 const STATUS_OPTIONS = ["all", "PMD", "PMT", "FINANCE", "PAID"] as const;
 
 interface MocOption {
-    id: number;
-    mocNo: string;
-    cwo: string;
-  }
+  id: number;
+  mocNo: string;
+  cwo: string;
+}
 
 interface Props {
   mocOptions?: MocOption[];
 }
-
-
 
 export function FiltersDialog({ mocOptions = [] }: Props) {
   const {
@@ -65,7 +61,7 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={closeDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Filter Invoices</DialogTitle>
             <DialogDescription>
@@ -75,7 +71,7 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
 
           <div className="space-y-4 py-4">
             {/* Search */}
-            <div className="flex flex-col">
+            <div className="flex flex-col space-y-2">
               <Label htmlFor="search">Search Term</Label>
               <Input
                 id="search"
@@ -86,7 +82,7 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
             </div>
 
             {/* CWO */}
-            <div className="flex flex-col">
+            <div className="flex flex-col space-y-2">
               <Label htmlFor="cwo">CWO Number</Label>
               <Input
                 id="cwo"
@@ -97,7 +93,7 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
             </div>
 
             {/* MOC */}
-            <div className="flex flex-col">
+            <div className="flex flex-col space-y-2">
               <Label htmlFor="moc">MOC Number</Label>
               <Select
                 value={draft.moc}
@@ -118,7 +114,7 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
             </div>
 
             {/* Status */}
-            <div className="flex flex-col">
+            <div className="flex flex-col space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select
                 value={draft.status}
@@ -138,43 +134,32 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
             </div>
 
             {/* Date Range */}
-            <div className="flex flex-col">
+            <div className="flex flex-col space-y-2">
               <Label>Date Range</Label>
               <Popover>
-  <PopoverTrigger asChild>
-    <Button variant="outline">
-      {draft.dateRange[0]
-        ? draft.dateRange[1]
-          ? `${format(draft.dateRange[0], "MMM dd")} - ${format(
-              draft.dateRange[1],
-              "MMM dd"
-            )}`
-          : format(draft.dateRange[0], "MMM dd")
-        : "Select Date Range"}
-    </Button>
-  </PopoverTrigger>
-  <PopoverContent className="p-0">
-    <Calendar
-      mode="range"
-      selected={{
-        from: draft.dateRange[0] || undefined,
-        to: draft.dateRange[1] || undefined,
-      }}
-      onSelect={(range) => {
-        // range is DateRange | undefined
-        if (!range) {
-          // user cleared the selection
-          updateDraft({ dateRange: [null, null] });
-        } else {
-          const [from, to] = range;
-          updateDraft({ dateRange: [from, to] });
-        }
-      }}
-      numberOfMonths={2}
-    />
-  </PopoverContent>
-</Popover>
-
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="justify-between">
+                    {formatRangeLabel(draft.dateRange)}
+                    <CalendarIcon className="w-5 h-5 ml-2" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[500px]">  {/* 500px wide popover */}
+                  <Calendar
+                    className="w-full"
+                    mode="range"
+                    selected={{
+                      from: draft.dateRange[0] ?? undefined,
+                      to: draft.dateRange[1] ?? undefined,
+                    }}
+                    onSelect={(selected) => {
+                      const from = selected?.from ?? null;
+                      const to = selected?.to ?? null;
+                      updateDraft({ dateRange: [from, to] });
+                    }}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
