@@ -2,7 +2,7 @@ import { Edit, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useInvoiceStore } from "@/app/stores/invoice-store";
-
+import { BarLoader } from "react-spinners";
 interface Invoices {
     id: number; mocId: number; 
     mocNo: string; 
@@ -24,10 +24,20 @@ interface PartialInvoiceTableProps {
 export default function PartialInvoiceTable({ data, isLoading }: PartialInvoiceTableProps) {
   const { setSelectedInvoice } = useInvoiceStore();
 
+  // if (isLoading) {
+  //   return (
+  //     <div className="text-center py-6">
+  //       <Loader2 className="animate-spin h-6 w-6 mx-auto" />
+  //     </div>
+  //   );
+  // }
+
+
+
   if (isLoading) {
     return (
       <div className="text-center py-6">
-        <Loader2 className="animate-spin h-6 w-6 mx-auto" />
+        <BarLoader width={"100%"} color="#36d7b7" />
       </div>
     );
   }
