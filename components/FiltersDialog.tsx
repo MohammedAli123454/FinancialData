@@ -1,6 +1,5 @@
-// components/FiltersDialog.tsx
 "use client";
-import { useFiltersStore, DateRange } from "@/app/stores/filters-store"
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,10 +23,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 
+import { useFiltersStore, DateRange } from "@/app/stores/filters-store";
 
-const STATUS_OPTIONS = ["all", "PMD", "PMT", "FINANCE", "PAID"] as const;
-
-interface MocOption {
+export interface MocOption {
   id: number;
   mocNo: string;
   cwo: string;
@@ -36,6 +34,8 @@ interface MocOption {
 interface Props {
   mocOptions?: MocOption[];
 }
+
+const STATUS_OPTIONS = ["all", "PMD", "PMT", "FINANCE", "PAID"] as const;
 
 export function FiltersDialog({ mocOptions = [] }: Props) {
   const {
@@ -51,7 +51,7 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
   const formatRangeLabel = ([from, to]: DateRange) => {
     if (!from) return "Select Date Range";
     const fmt = (d: Date) => format(d, "MMM dd");
-    return to ? `${fmt(from)} – ${fmt(to)}` : fmt(from);
+    return to ? `${fmt(from)} → ${fmt(to)}` : fmt(from);
   };
 
   return (
@@ -59,7 +59,6 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
       <Button onClick={openDialog} variant="outline">
         Filters
       </Button>
-
       <Dialog open={dialogOpen} onOpenChange={closeDialog}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -68,7 +67,6 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
               Search, CWO, MOC, status, or date range.
             </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4 py-4">
             {/* Search */}
             <div className="flex flex-col space-y-2">
@@ -80,7 +78,6 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
                 onChange={(e) => updateDraft({ search: e.target.value })}
               />
             </div>
-
             {/* CWO */}
             <div className="flex flex-col space-y-2">
               <Label htmlFor="cwo">CWO Number</Label>
@@ -91,7 +88,6 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
                 onChange={(e) => updateDraft({ cwo: e.target.value })}
               />
             </div>
-
             {/* MOC */}
             <div className="flex flex-col space-y-2">
               <Label htmlFor="moc">MOC Number</Label>
@@ -112,7 +108,6 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
                 </SelectContent>
               </Select>
             </div>
-
             {/* Status */}
             <div className="flex flex-col space-y-2">
               <Label htmlFor="status">Status</Label>
@@ -132,7 +127,6 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
                 </SelectContent>
               </Select>
             </div>
-
             {/* Date Range */}
             <div className="flex flex-col space-y-2">
               <Label>Date Range</Label>
@@ -143,7 +137,7 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
                     <CalendarIcon className="w-5 h-5 ml-2" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 w-[500px]">  {/* 500px wide popover */}
+                <PopoverContent className="p-0 w-[500px]">
                   <Calendar
                     className="w-full"
                     mode="range"
@@ -151,18 +145,17 @@ export function FiltersDialog({ mocOptions = [] }: Props) {
                       from: draft.dateRange[0] ?? undefined,
                       to: draft.dateRange[1] ?? undefined,
                     }}
-                    onSelect={(selected) => {
-                      const from = selected?.from ?? null;
-                      const to = selected?.to ?? null;
-                      updateDraft({ dateRange: [from, to] });
-                    }}
+                    onSelect={(sel) =>
+                      updateDraft({
+                        dateRange: [sel?.from ?? null, sel?.to ?? null],
+                      })
+                    }
                     numberOfMonths={2}
                   />
                 </PopoverContent>
               </Popover>
             </div>
           </div>
-
           <DialogFooter className="flex justify-end space-x-2">
             <Button variant="outline" onClick={resetDraft}>
               Clear

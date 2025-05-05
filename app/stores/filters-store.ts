@@ -1,4 +1,3 @@
-// stores/filters-store.ts
 import { create } from "zustand";
 
 export type DateRange = [Date | null, Date | null];
@@ -23,8 +22,6 @@ interface FiltersStore {
   applied: FilterValues;
   draft: FilterValues;
   dialogOpen: boolean;
-
-  // Actions
   openDialog: () => void;
   closeDialog: () => void;
   updateDraft: (updates: Partial<FilterValues>) => void;
@@ -42,21 +39,14 @@ export const useFiltersStore = create<FiltersStore>((set, get) => ({
     const { applied } = get();
     set({ dialogOpen: true, draft: { ...applied } });
   },
-
   closeDialog: () => set({ dialogOpen: false }),
-
   updateDraft: (updates) =>
-    set((state) => ({
-      draft: { ...state.draft, ...updates },
-    })),
-
+    set((state) => ({ draft: { ...state.draft, ...updates } })),
   apply: () => {
     const { draft } = get();
     set({ applied: { ...draft }, dialogOpen: false });
   },
-
   resetDraft: () => set({ draft: INITIAL_FILTERS }),
-
   resetAll: () =>
     set({ applied: INITIAL_FILTERS, draft: INITIAL_FILTERS }),
 }));

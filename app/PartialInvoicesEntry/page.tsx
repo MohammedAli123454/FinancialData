@@ -19,16 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
+
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, CalendarIcon, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 
 import { useFiltersStore } from "@/app/stores/filters-store";
 import { FiltersDialog } from "@/components/FiltersDialog";
@@ -36,6 +29,8 @@ import PartialInvoiceTable from "@/components/PartialInvoiceTable";
 import { useInvoiceStore } from "@/app/stores/invoice-store";
 
 import "react-toastify/dist/ReactToastify.css";
+import { StatusDialog } from "@/components/StatusDialog";
+import { DeleteDialog } from "@/components/DeleteDialog";
 
 // -- Form schema and types --
 const formSchema = z.object({
@@ -490,97 +485,20 @@ export default function PartialInvoicesEntry() {
 
       {/* Status Dialog */}
       {actionType === "status" && statusInvoice && (
-        <Dialog open onOpenChange={() => clearSelection()}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Update Status</DialogTitle>
-              <DialogDescription>
-                {newStatus === "PAID" && "Select receipt date for PAID status"}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Select
-                value={newStatus}
-                onValueChange={(v) =>
-                  setStatusData(v, newReceiptDate, statusInvoice)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["PMD", "PMT", "FINANCE", "PAID"].map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {newStatus === "PAID" && statusInvoice && (
-                <Calendar
-                  mode="single"
-                  selected={newReceiptDate || undefined}
-                  onSelect={(date) => {
-                    if (!date) return;
-                    // keep statusInvoice and newStatus in sync in the store
-                    setStatusData(newStatus, date, statusInvoice);
-                  }}
-                />
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => clearSelection()}>
-                Cancel
-              </Button>
-              <Button
-                disabled={updateStatusMutation.isPending}
-                onClick={() =>
-                  updateStatusMutation.mutate({
-                    id: statusInvoice.id,
-                    status: newStatus,
-                    date: newStatus === "PAID" ? newReceiptDate! : undefined,
-                  })
-                }
-              >
-                {updateStatusMutation.isPending ? (
-                  <Loader2 className="animate-spin h-4 w-4" />
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <StatusDialog
+          saving={updateStatusMutation.isPending}
+          onCancel={clearSelection}
+          onSave={(st, dt) => updateStatusMutation.mutate({ id: statusInvoice.id, status: st, date: dt })}
+        />
       )}
 
       {/* Delete Dialog */}
       {actionType === "delete" && selectedInvoiceId != null && (
-        <Dialog open onOpenChange={() => clearSelection()}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Invoice</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this invoice?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => clearSelection()}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate(selectedInvoiceId)}
-              >
-                {deleteMutation.isPending ? (
-                  <Loader2 className="animate-spin h-5 w-5" />
-                ) : (
-                  "Confirm"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <DeleteDialog
+          confirming={deleteMutation.isPending}
+          onCancel={clearSelection}
+          onConfirm={() => deleteMutation.mutate(selectedInvoiceId)}
+        />
       )}
     </div>
   );
