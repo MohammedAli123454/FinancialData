@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent } from 'react';
+import { BarLoader } from 'react-spinners';
 import {
   Card,
   CardContent,
@@ -15,40 +15,56 @@ import {
   AlertTitle,
   AlertDescription,
 } from '@/components/ui/alert';
+import Sidebar from '@/components/Sidebar';
 
 export default function SigninPage() {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+
+  // Sidebar props just like in your layout
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setIsPending(true);
 
     const form = e.currentTarget;
     const { email, password } = Object.fromEntries(new FormData(form));
 
-    let data: any;
     try {
       const res = await fetch('/api/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      data = await res.json();
+      const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Something went wrong');
+
+      // mark signed in
+      setIsSignedIn(true);
     } catch (err: any) {
-      return setError(err.message);
+      setError(err.message);
+    } finally {
+      setIsPending(false);
     }
-
-    // only the navigation is a transition
-    startTransition(() => {
-       router.push('/dashboard');
-
-
-    });
   }
 
+  // Once signed in, render Sidebar (with its props) + page container
+  if (isSignedIn) {
+    return (
+      <div className="flex">
+        <Sidebar
+          isOpen={isSidebarOpen}
+          toggleSidebar={toggleSidebar}
+        />
+      </div>
+    );
+  }
+
+  // Otherwise, show the sign‑in form
   return (
     <Card className="max-w-md mx-auto mt-20">
       <CardHeader>
@@ -75,8 +91,13 @@ export default function SigninPage() {
             <Input id="password" name="password" type="password" required />
           </div>
           <Button type="submit" disabled={isPending}>
-            {isPending ? 'Signing in...' : 'Sign In'}
+            Sign In
           </Button>
+          {isPending && (
+            <div className="mt-4 flex justify-center">
+              <BarLoader height={6} width="100%" color="#36d7b7" />
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>
