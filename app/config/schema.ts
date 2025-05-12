@@ -67,16 +67,23 @@ export const partialInvoices = pgTable("partial_invoices", {
 export const suppliers = pgTable('suppliers', {
   id: serial('id').primaryKey(),
   Supplier: varchar('name', { length: 255 }).notNull(),
-  currency: varchar('currency', { length: 10 }).notNull(),
   location: varchar('location', { length: 100 }).notNull(),
 });
+
 
 export const purchaseOrders = pgTable('purchase_orders', {
   id: serial('id').primaryKey(),
   supplierId: integer('supplier_id').notNull().references(() => suppliers.id),
   poNumber: varchar('po_number', { length: 50 }).notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(), // ✅ moved here
   poValue: numeric('po_value').notNull(),
   poValueWithVAT: numeric('po_value_with_vat').notNull(),
+});
+
+
+export const currencyRates = pgTable('currency_rates', {
+  currency: varchar('currency', { length: 10 }).primaryKey(),
+  rate: numeric('rate').notNull(), // Rate to SAR
 });
 
 
