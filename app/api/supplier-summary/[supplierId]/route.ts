@@ -2,13 +2,7 @@ import { db } from '@/app/config/db';
 import { sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-interface Params {
-  params: {
-    supplierId: string;
-  };
-}
-
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: { params: { supplierId: string } }) {
   const supplierId = params.supplierId;
 
   const result = await db.execute(sql`
