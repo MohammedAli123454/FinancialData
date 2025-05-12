@@ -167,7 +167,7 @@ export default function SupplierSummaryPage() {
       {/* Currency Toggle */}
       <div className="flex items-center gap-2 mb-4">
         <Switch id="currency-toggle" checked={showInSAR} onCheckedChange={setShowInSAR} />
-        <Label htmlFor="currency-toggle">Show values in Saudi Riyals</Label>
+        <Label htmlFor="currency-toggle">Show values in Saudi Riyals(SR)</Label>
       </div>
 
       {/* Table */}
