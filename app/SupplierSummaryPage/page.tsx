@@ -1,6 +1,7 @@
-"use client"
+'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -20,10 +21,11 @@ interface SupplierSummary {
   supplierId: number;
   supplier: string;
   location: string;
+  poValue: number;
+  poValueWithVAT: number;
   totalValueInSAR: number;
   totalWithVATInSAR: number;
 }
-
 interface PO {
   poNumber: string;
   currency: string;
@@ -34,72 +36,62 @@ interface PO {
 }
 
 export default function SupplierSummaryPage() {
-  const [summary, setSummary] = useState<SupplierSummary[]>([]);
-  const [filteredSummary, setFilteredSummary] = useState<SupplierSummary[]>([]);
-  const [selectedDetails, setSelectedDetails] = useState<PO[]>([]);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
-  const [selectedSupplier, setSelectedSupplier] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [selectedSupplierName, setSelectedSupplierName] = useState('');
+  const [selectedDetails, setSelectedDetails] = useState<PO[]>([]);
   const [showInSAR, setShowInSAR] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [rowLoading, setRowLoading] = useState<number | null>(null); // Track loading for specific row
   const [open, setOpen] = useState(false);
   const [chartOpen, setChartOpen] = useState(false);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/supplier-summary')
-      .then(res => res.json())
-      .then(data => {
-        setSummary(data);
-        setFilteredSummary(data);
-        setLoading(false);
-      });
-  }, []);
+  const { data: summary = [], isLoading } = useQuery<SupplierSummary[]>({
+    queryKey: ['supplierSummary'],
+    queryFn: () => fetch('/api/supplier-summary').then(res => res.json()),
+  });
 
-  useEffect(() => {
-    let result = [...summary];
-    if (searchTerm) {
-      result = result.filter(s => s.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-    if (selectedSupplier) {
-      result = result.filter(s => s.supplier === selectedSupplier);
-    }
-    setFilteredSummary(result);
-  }, [searchTerm, selectedSupplier, summary]);
+  const formatNumber = (val: any) => (isNaN(val) ? '0.00' : Number(val).toFixed(2));
 
-  const handleRowClick = async (supplierId: number) => {
-    setRowLoading(supplierId); // Set row loading state to the clicked row's supplierId
-    try {
-      const res = await fetch(`/api/supplier-summary/${supplierId}`);
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data: PO[] = await res.json();
-      setSelectedDetails(data);
-      setOpen(true);
-    } catch (err) {
-      console.error('Failed to fetch PO details:', err);
-      alert('Failed to load PO details.');
-    } finally {
-      setRowLoading(null); // Reset row loading state
-    }
-  };
+  const filteredSummary = summary.filter((s) =>
+    s.supplier.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (!selectedSupplier || s.supplier === selectedSupplier)
+  );
 
-  const formatNumber = (val: any): string => {
-    const num = typeof val === 'number' ? val : parseFloat(val);
-    return isNaN(num) ? '0.00' : num.toFixed(2);
-  };
-
-  const grandTotalValue = filteredSummary.reduce((acc, cur) => acc + Number(cur.totalValueInSAR), 0);
-  const grandTotalWithVAT = filteredSummary.reduce((acc, cur) => acc + Number(cur.totalWithVATInSAR), 0);
+  const grandTotalValue = filteredSummary.reduce(
+    (acc, cur) => acc + Number(cur.totalValueInSAR || 0),
+    0
+  );
+  const grandTotalWithVAT = filteredSummary.reduce(
+    (acc, cur) => acc + Number(cur.totalWithVATInSAR || 0),
+    0
+  );
 
   const topTenSuppliers = [...summary]
-    .sort((a, b) => Number(b.totalValueInSAR) - Number(a.totalValueInSAR))
+    .sort((a, b) => b.totalValueInSAR - a.totalValueInSAR)
     .slice(0, 10)
     .map((s) => ({
       name: s.supplier.length > 15 ? s.supplier.slice(0, 12) + '…' : s.supplier,
-      value: Number(s.totalValueInSAR),
+      value: s.totalValueInSAR,
     }));
 
   const uniqueSuppliers = [...new Set(summary.map(s => s.supplier))];
+
+  const handleViewDetails = async (supplierId: number, supplierName: string) => {
+    setOpen(true);
+    setSelectedSupplierName(supplierName);
+    setIsFetchingDetails(true);
+    try {
+      const res = await fetch(`/api/supplier-summary/${supplierId}`);
+      if (!res.ok) throw new Error('Failed to fetch PO details');
+      const data: PO[] = await res.json();
+      setSelectedDetails(data);
+    } catch (err) {
+      alert('Failed to load PO details.');
+      setSelectedDetails([]);
+    } finally {
+      setIsFetchingDetails(false);
+    }
+  };
 
   return (
     <div className="p-6">
@@ -123,8 +115,8 @@ export default function SupplierSummaryPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">All Suppliers</SelectItem>
-            {uniqueSuppliers.map((supplier) => (
-              <SelectItem key={supplier} value={supplier}>{supplier}</SelectItem>
+            {uniqueSuppliers.map((supplier, index) => (
+              <SelectItem key={`${supplier}-${index}`} value={supplier}>{supplier}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -134,49 +126,59 @@ export default function SupplierSummaryPage() {
         </div>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex justify-center mt-10">
           <BarLoader color="#3b82f6" />
         </div>
       ) : (
         <div className="relative overflow-auto max-h-[500px] rounded-md border border-gray-300">
-          <table className="min-w-[800px] w-full text-sm">
+          <table className="min-w-[900px] w-full text-sm">
             <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
-                <th className="border px-4 py-2 text-left w-[40%]">Supplier</th>
-                <th className="border px-4 py-2 text-right w-[30%]">Total PO Value</th>
-                <th className="border px-4 py-2 text-right w-[30%]">Total PO with VAT</th>
+                <th className="border-b border-gray-200 px-4 py-1 w-16 text-left text-gray-700">S.No</th>
+                <th className="border-b border-gray-200 px-4 py-1 w-72 text-left text-gray-700 whitespace-nowrap">Supplier</th>
+                <th className="border-b border-gray-200 px-4 py-1 w-52 text-right text-gray-700 whitespace-nowrap">Total PO Value</th>
+                <th className="border-b border-gray-200 px-4 py-1 w-52 text-right text-gray-700 whitespace-nowrap">Total PO with VAT</th>
+                <th className="border-b border-gray-200 px-4 py-1 w-36 text-center text-gray-700 whitespace-nowrap">Action</th>
               </tr>
             </thead>
-            <tbody>
-  {filteredSummary.map((item, idx) => (
-    <tr 
-      key={`${item.supplierId}-${idx}`} // Make the key unique by adding the index
-      className={`hover:bg-blue-50 cursor-pointer even:bg-gray-50 ${rowLoading === item.supplierId ? 'bg-gray-200' : ''}`}
-      onClick={() => handleRowClick(item.supplierId)}
-    >
-      <td className="border px-4 py-2">{item.supplier}</td>
-      <td className="border px-4 py-2 text-right">{formatNumber(item.totalValueInSAR)} SAR</td>
-      <td className="border px-4 py-2 text-right">{formatNumber(item.totalWithVATInSAR)} SAR</td>
-    </tr>
-  ))}
-</tbody>
 
-            <tfoot className="sticky bottom-0 bg-gray-200 font-semibold">
+            <tbody>
+              {filteredSummary.map((item, index) => (
+                <tr key={`${item.supplierId}-${index}`} className="even:bg-gray-50">
+                  <td className="border px-4 py-1 text-left w-16">{index + 1}</td>
+                  <td className="truncate border px-4 py-1 w-72">{item.supplier}</td>
+                  <td className="truncate border px-4 py-1 w-52 text-right">{formatNumber(item.totalValueInSAR)} SAR</td>
+                  <td className="truncate border px-4 py-1 w-52 text-right">{formatNumber(item.totalWithVATInSAR)} SAR</td>
+                  <td className="border px-4 py-1 w-36 text-center">
+                    <Button size="sm" onClick={() => handleViewDetails(item.supplierId, item.supplier)}>
+                      View Details
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+
+            <tfoot className="sticky bottom-0 bg-gray-200 font-semibold z-10">
               <tr>
-                <td className="border px-4 py-2">Grand Total</td>
-                <td className="border px-4 py-2 text-right">{formatNumber(grandTotalValue)} SAR</td>
-                <td className="border px-4 py-2 text-right">{formatNumber(grandTotalWithVAT)} SAR</td>
+                <td className="border px-4 py-1 text-left" colSpan={2}>Grand Total</td>
+                <td className="border px-4 py-1 text-right" colSpan={1}>{formatNumber(grandTotalValue)} SAR</td>
+                <td className="border px-4 py-1 text-right">{formatNumber(grandTotalWithVAT)} SAR</td>
+                <td className="border px-4 py-1 text-center">—</td>
               </tr>
             </tfoot>
           </table>
+
         </div>
       )}
 
+      {/* Detail Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>PO Details</DialogTitle></DialogHeader>
-          {rowLoading ? (
+          <DialogHeader>
+            <DialogTitle>PO Details - {selectedSupplierName}</DialogTitle>
+          </DialogHeader>
+          {isFetchingDetails ? (
             <div className="flex justify-center items-center h-48">
               <PulseLoader color="#3b82f6" />
             </div>
@@ -185,50 +187,56 @@ export default function SupplierSummaryPage() {
           ) : (
             <div className="overflow-auto max-h-[400px] mt-4 border rounded-md">
               <table className="min-w-full text-sm">
-                <thead className="bg-gray-100 sticky top-0">
+                <thead className="bg-gray-100 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-2 text-left">PO Number</th>
-                    <th className="px-4 py-2 text-left">Currency</th>
-                    <th className="px-4 py-2 text-right">PO Value</th>
-                    <th className="px-4 py-2 text-right">PO w/ VAT</th>
+                    <th className="border-b border-gray-200 px-4 py-1 w-16 text-left text-gray-700 whitespace-nowrap">S.No</th>
+                    <th className="border-b border-gray-200 px-4 py-1 w-44 text-left text-gray-700 whitespace-nowrap">PO Number</th>
+                    <th className="border-b border-gray-200 px-4 py-1 w-32 text-left text-gray-700 whitespace-nowrap">Currency</th>
+                    <th className="border-b border-gray-200 px-4 py-1 w-52 text-right text-gray-700 whitespace-nowrap">PO Value</th>
+                    <th className="border-b border-gray-200 px-4 py-1 w-52 text-right text-gray-700 whitespace-nowrap">PO W/ VAT</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {selectedDetails.map((po, idx) => (
-                    <tr key={idx}>
-                      <td className="px-4 py-2">{po.poNumber}</td>
-                      <td className="px-4 py-2">{po.currency}</td>
-                      <td className="px-4 py-2 text-right">
+                  {selectedDetails.map((po, index) => (
+                    <tr key={`${po.poNumber}-${index}`} className="even:bg-gray-50">
+                      <td className="px-4 py-1 text-left w-16">{index + 1}</td>
+                      <td className="px-4 py-1 truncate w-44">{po.poNumber}</td>
+                      <td className="px-4 py-1 w-32">{po.currency}</td>
+                      <td className="px-4 py-1 text-right w-52">
                         {formatNumber(showInSAR ? po.poValueInSAR : po.poValue)} {showInSAR ? 'SAR' : po.currency}
                       </td>
-                      <td className="px-4 py-2 text-right">
+                      <td className="px-4 py-1 text-right w-52">
                         {formatNumber(showInSAR ? po.poValueWithVATInSAR : po.poValueWithVAT)} {showInSAR ? 'SAR' : po.currency}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+
                 <tfoot className="bg-gray-200 font-semibold">
                   <tr>
-                    <td className="px-4 py-2" colSpan={2}>Grand Total</td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-1 text-left" colSpan={2}>Grand Total</td>
+                    <td className="px-4 py-1 text-right" colSpan={1}>
                       {formatNumber(
-                        selectedDetails.reduce((acc, r) => acc + (showInSAR ? r.poValueInSAR : r.poValue), 0)
+                        selectedDetails.reduce((acc, r) => acc + Number(showInSAR ? r.poValueInSAR : r.poValue), 0)
                       )} {showInSAR ? 'SAR' : selectedDetails[0]?.currency || ''}
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-1 text-right">
                       {formatNumber(
-                        selectedDetails.reduce((acc, r) => acc + (showInSAR ? r.poValueWithVATInSAR : r.poValueWithVAT), 0)
+                        selectedDetails.reduce((acc, r) => acc + Number(showInSAR ? r.poValueWithVATInSAR : r.poValueWithVAT), 0)
                       )} {showInSAR ? 'SAR' : selectedDetails[0]?.currency || ''}
                     </td>
                   </tr>
                 </tfoot>
               </table>
+
             </div>
           )}
           <DialogFooter><Button onClick={() => setOpen(false)}>Close</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Top 10 Chart Dialog */}
       <Dialog open={chartOpen} onOpenChange={setChartOpen}>
         <DialogContent className="max-w-6xl">
           <DialogHeader>
