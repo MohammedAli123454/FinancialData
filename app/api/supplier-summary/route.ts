@@ -8,6 +8,7 @@ export async function GET() {
       s.id AS "supplierId",
       s.name AS "supplier",
       s.location,
+      p.currency,
       r.rate AS "currencyRate",  -- Adding the conversion rate
       SUM(p.po_value) AS "poValue",  -- Original PO value
       SUM(p.po_value_with_vat) AS "poValueWithVAT",  -- Original PO value with VAT
@@ -16,7 +17,7 @@ export async function GET() {
     FROM suppliers s
     JOIN purchase_orders p ON p.supplier_id = s.id
     JOIN currency_rates r ON p.currency = r.currency
-    GROUP BY s.id, s.name, s.location, r.rate  -- Grouping by rate as well
+    GROUP BY s.id, s.name, s.location, p.currency, r.rate  -- Grouping by rate as well
     ORDER BY s.name
   `);
 
