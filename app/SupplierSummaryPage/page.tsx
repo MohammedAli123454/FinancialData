@@ -46,6 +46,8 @@ export default function SupplierSummaryPage() {
   const [chartOpen, setChartOpen] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
+  const thBase = "border-b border-gray-200 px-4 py-2 text-gray-700 whitespace-nowrap";
+
   const { data: summary = [], isLoading } = useQuery<SupplierSummary[]>({
     queryKey: ['supplierSummary'],
     queryFn: () => fetch('/api/supplier-summary').then(res => res.json()),
@@ -67,7 +69,6 @@ export default function SupplierSummaryPage() {
     (acc, cur) => acc + Number(showInSAR ? cur.totalWithVATInSAR : cur.poValueWithVAT || 0),
     0
   );
-
 
   const topTenSuppliers = [...summary]
     .sort((a, b) => b.totalValueInSAR - a.totalValueInSAR)
@@ -97,7 +98,7 @@ export default function SupplierSummaryPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-2 min-h-screen flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Purchase Order List By Supplier</h2>
         <Button onClick={() => setChartOpen(true)}>TOP TEN Suppliers</Button>
@@ -134,25 +135,24 @@ export default function SupplierSummaryPage() {
           <BarLoader color="#3b82f6" />
         </div>
       ) : (
-        <div className="relative overflow-auto max-h-[500px] rounded-md border border-gray-300">
+        <div className="flex-grow overflow-auto rounded-md border border-gray-300 max-h-[calc(100vh-150px)]">
           <table className="min-w-[900px] w-full text-sm">
-          <thead className="bg-blue-100 sticky top-0 z-10">
-  <tr>
-    <th className="border-b border-gray-200 px-4 py-2 w-16 text-left text-gray-700">S.No</th>
-    <th className="border-b border-gray-200 px-4 py-2 w-50 text-left text-gray-700 whitespace-nowrap">Supplier</th>
-    <th className="border-b border-gray-200 px-4 py-2 w-20 text-left text-gray-700 whitespace-nowrap">Currency</th>
-    <th className="border-b border-gray-200 px-4 py-2 w-30 text-right text-gray-700 whitespace-nowrap">Total PO Value</th>
-    <th className="border-b border-gray-200 px-4 py-2 w-30 text-right text-gray-700 whitespace-nowrap">Total PO with VAT</th>
-    <th className="border-b border-gray-200 px-4 py-2 w-30 text-center text-gray-700 whitespace-nowrap">Action</th>
-  </tr>
-</thead>
-
+            <thead className="bg-gray-100 sticky top-0 z-10">
+              <tr>
+                <th className={`${thBase} w-16 text-left`}>S.No</th>
+                <th className={`${thBase} w-44 text-left`}>PO Number</th>
+                <th className={`${thBase} w-32 text-left`}>Currency</th>
+                <th className={`${thBase} w-52 text-right`}>PO Value</th>
+                <th className={`${thBase} w-52 text-right`}>PO W/ VAT</th>
+                <th className={`${thBase} w-40 text-center`}>Action</th>
+              </tr>
+            </thead>
             <tbody>
               {filteredSummary.map((item, index) => (
                 <tr key={`${item.supplierId}-${index}`} className="even:bg-gray-50">
                   <td className="border px-4 py-1 text-left w-16">{index + 1}</td>
                   <td className="truncate border px-4 py-1 w-72">{item.supplier}</td>
-                  <td className="truncate border px-4 py-1 w-72">{showInSAR ? 'SAR' : item.currency} </td>
+                  <td className="truncate border px-4 py-1 w-72">{showInSAR ? 'SAR' : item.currency}</td>
                   <td className="truncate border px-4 py-1 w-52 text-right">
                     {formatNumber(showInSAR ? item.totalValueInSAR : item.poValue)}
                   </td>
@@ -160,14 +160,14 @@ export default function SupplierSummaryPage() {
                     {formatNumber(showInSAR ? item.totalWithVATInSAR : item.poValueWithVAT)}
                   </td>
                   <td className="border px-4 py-1 w-36 text-center">
-  <Button
-    size="sm"
-    onClick={() => handleViewDetails(item.supplierId, item.supplier)}
-    className="bg-blue-500 text-white hover:bg-blue-700 hover:text-white rounded"
-  >
-    View Details
-  </Button>
-</td>
+                    <Button
+                      size="sm"
+                      onClick={() => handleViewDetails(item.supplierId, item.supplier)}
+                      className="bg-blue-500 text-white hover:bg-blue-700 hover:text-white rounded"
+                    >
+                      View Details
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -202,14 +202,13 @@ export default function SupplierSummaryPage() {
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-100 sticky top-0 z-10">
                   <tr>
-                    <th className="border-b border-gray-200 px-4 py-1 w-16 text-left text-gray-700 whitespace-nowrap">S.No</th>
-                    <th className="border-b border-gray-200 px-4 py-1 w-44 text-left text-gray-700 whitespace-nowrap">PO Number</th>
-                    <th className="border-b border-gray-200 px-4 py-1 w-32 text-left text-gray-700 whitespace-nowrap">Currency</th>
-                    <th className="border-b border-gray-200 px-4 py-1 w-52 text-right text-gray-700 whitespace-nowrap">PO Value</th>
-                    <th className="border-b border-gray-200 px-4 py-1 w-52 text-right text-gray-700 whitespace-nowrap">PO W/ VAT</th>
+                    <th className={`${thBase} w-16 text-left`}>S.No</th>
+                    <th className={`${thBase} w-44 text-left`}>PO Number</th>
+                    <th className={`${thBase} w-32 text-left`}>Currency</th>
+                    <th className={`${thBase} w-52 text-right`}>PO Value</th>
+                    <th className={`${thBase} w-52 text-right`}>PO W/ VAT</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {selectedDetails.map((po, index) => (
                     <tr key={`${po.poNumber}-${index}`} className="even:bg-gray-50">
@@ -225,19 +224,18 @@ export default function SupplierSummaryPage() {
                     </tr>
                   ))}
                 </tbody>
-
                 <tfoot className="bg-gray-200 font-semibold">
                   <tr>
                     <td className="px-4 py-1 text-left" colSpan={3}>Grand Total</td>
                     <td className="px-4 py-1 text-right" colSpan={1}>
                       {formatNumber(
                         selectedDetails.reduce((acc, r) => acc + Number(showInSAR ? r.poValueInSAR : r.poValue), 0)
-                      )} {showInSAR ? 'SAR' : selectedDetails[0]?.currency || ''}
+                      )}
                     </td>
                     <td className="px-4 py-1 text-right">
                       {formatNumber(
                         selectedDetails.reduce((acc, r) => acc + Number(showInSAR ? r.poValueWithVATInSAR : r.poValueWithVAT), 0)
-                      )} {showInSAR ? 'SAR' : selectedDetails[0]?.currency || ''}
+                      )}
                     </td>
                   </tr>
                 </tfoot>
@@ -251,43 +249,39 @@ export default function SupplierSummaryPage() {
 
       {/* Top 10 Chart Dialog */}
       <Dialog open={chartOpen} onOpenChange={setChartOpen}>
-  <DialogContent className="max-w-6xl">
-    <DialogHeader>
-      <DialogTitle>Top 10 Suppliers</DialogTitle>
-    </DialogHeader>
-    <div className="h-[400px] mt-4">
-      <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-  data={topTenSuppliers}
-  margin={{ top: 20, right: 30, left: 0, bottom: 40 }}
->
-  <XAxis dataKey="name" angle={-30} textAnchor="end" />
-  <YAxis domain={[0, 'dataMax + 3000000']} />  {/* Add padding to top */}
-  <Tooltip />
-  <Bar dataKey="value">
-    <LabelList
-      dataKey="value"
-      position="inside"
-      formatter={(value: number) => `${(value / 1_000_000).toFixed(2)} M`}
-      fill="#ffffff"
-    />
-    {topTenSuppliers.map((entry, index) => (
-      <Cell
-        key={`cell-${index}`}
-        fill={`hsl(${(index * 35) % 360}, 70%, 50%)`}
-      />
-    ))}
-  </Bar>
-</BarChart>
-
-
-
-      </ResponsiveContainer>
-    </div>
-    <DialogFooter><Button onClick={() => setChartOpen(false)}>Close</Button></DialogFooter>
-  </DialogContent>
-</Dialog>
-
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>Top 10 Suppliers</DialogTitle>
+          </DialogHeader>
+          <div className="h-[400px] mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={topTenSuppliers}
+                margin={{ top: 20, right: 30, left: 0, bottom: 40 }}
+              >
+                <XAxis dataKey="name" angle={-30} textAnchor="end" />
+                <YAxis domain={[0, 'dataMax + 3000000']} />  {/* Add padding to top */}
+                <Tooltip />
+                <Bar dataKey="value">
+                  <LabelList
+                    dataKey="value"
+                    position="inside"
+                    formatter={(value: number) => `${(value / 1_000_000).toFixed(2)} M`}
+                    fill="#ffffff"
+                  />
+                  {topTenSuppliers.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={`hsl(${(index * 35) % 360}, 70%, 50%)`}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <DialogFooter><Button onClick={() => setChartOpen(false)}>Close</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
