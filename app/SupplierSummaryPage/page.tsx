@@ -188,7 +188,7 @@ export default function SupplierSummaryPage() {
 
       {/* Detail Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="w-full max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>PO Details - {selectedSupplierName}</DialogTitle>
           </DialogHeader>
@@ -200,8 +200,8 @@ export default function SupplierSummaryPage() {
             <div className="p-4 text-muted-foreground text-center">No PO details available</div>
           ) : (
             <div className="overflow-auto max-h-[400px] mt-4 border rounded-md">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-100 sticky top-0 z-10">
+              <table className="min-w-full text-sm md:text-base">
+                <thead className="bg-gray-100 sticky top-0 z-20">
                   <tr>
                     <th className={`${thBase} w-16 text-left`}>S.No</th>
                     <th className={`${thBase} w-44 text-left`}>PO Number</th>
@@ -213,27 +213,27 @@ export default function SupplierSummaryPage() {
                 <tbody>
                   {selectedDetails.map((po, index) => (
                     <tr key={`${po.poNumber}-${index}`} className="even:bg-gray-50">
-                      <td className="px-4 py-1 text-left w-16">{index + 1}</td>
-                      <td className="px-4 py-1 truncate w-44">{po.poNumber}</td>
-                      <td className="px-4 py-1 w-32">{po.currency}</td>
-                      <td className="px-4 py-1 text-right w-52">
+                      <td className="px-2 md:px-4 py-1 text-left w-16">{index + 1}</td>
+                      <td className="px-2 md:px-4 py-1 truncate w-44">{po.poNumber}</td>
+                      <td className="px-2 md:px-4 py-1 w-32">{po.currency}</td>
+                      <td className="px-2 md:px-4 py-1 text-right w-52">
                         {formatNumber(showInSAR ? po.poValueInSAR : po.poValue)} {showInSAR ? 'SAR' : po.currency}
                       </td>
-                      <td className="px-4 py-1 text-right w-52">
+                      <td className="px-2 md:px-4 py-1 text-right w-52">
                         {formatNumber(showInSAR ? po.poValueWithVATInSAR : po.poValueWithVAT)} {showInSAR ? 'SAR' : po.currency}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-gray-200 font-semibold">
+                <tfoot className="bg-gray-200 font-semibold sticky bottom-0 z-20">
                   <tr>
-                    <td className="px-4 py-1 text-left" colSpan={3}>Grand Total</td>
-                    <td className="px-4 py-1 text-right" colSpan={1}>
+                    <td className="px-2 md:px-4 py-1 text-left" colSpan={3}>Grand Total</td>
+                    <td className="px-2 md:px-4 py-1 text-right" colSpan={1}>
                       {formatNumber(
                         selectedDetails.reduce((acc, r) => acc + Number(showInSAR ? r.poValueInSAR : r.poValue), 0)
                       )}
                     </td>
-                    <td className="px-4 py-1 text-right">
+                    <td className="px-2 md:px-4 py-1 text-right">
                       {formatNumber(
                         selectedDetails.reduce((acc, r) => acc + Number(showInSAR ? r.poValueWithVATInSAR : r.poValueWithVAT), 0)
                       )}
@@ -241,53 +241,55 @@ export default function SupplierSummaryPage() {
                   </tr>
                 </tfoot>
               </table>
-
             </div>
           )}
-          <DialogFooter><Button onClick={() => setOpen(false)}>Close</Button></DialogFooter>
+          <DialogFooter className="justify-end">
+            <Button onClick={() => setOpen(false)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Top 10 Chart Dialog */}
       <Dialog open={chartOpen} onOpenChange={setChartOpen}>
-        <DialogContent className="max-w-6xl">
+        <DialogContent className="w-full max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Top 10 Suppliers</DialogTitle>
           </DialogHeader>
           <div className="relative overflow-visible h-[400px] mt-4">
-  <ResponsiveContainer width="100%" height="100%">
-    <BarChart
-      data={topTenSuppliers}
-      margin={{ top: 60, right: 30, left: 0, bottom: 40 }}
-    >
-      <XAxis dataKey="name" angle={-30} textAnchor="end" height={70} />
-      <YAxis
-        domain={[0, 'dataMax + 5000000']}
-        tickFormatter={(value) => `${(value / 1_000_000)}M`}
-      />
-      <Tooltip
-        formatter={(value: number) => `${(value / 1_000_000).toFixed(2)}M`}
-      />
-      <Bar dataKey="value">
-        <LabelList
-          dataKey="value"
-           position="insideBottom"
-          formatter={(value: number) => `${(value / 1_000_000).toFixed(2)} M`}
-          fill="#fff"
-          style={{ fontSize: '12px', fontWeight: 'bold' }}
-        />
-        {topTenSuppliers.map((entry, index) => (
-          <Cell
-            key={`cell-${index}`}
-            fill={`hsl(${(index * 35) % 360}, 70%, 50%)`}
-          />
-        ))}
-      </Bar>
-    </BarChart>
-  </ResponsiveContainer>
-</div>
-
-          <DialogFooter><Button onClick={() => setChartOpen(false)}>Close</Button></DialogFooter>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={topTenSuppliers}
+                margin={{ top: 60, right: 30, left: 0, bottom: 40 }}
+              >
+                <XAxis dataKey="name" angle={-30} textAnchor="end" height={70} />
+                <YAxis
+                  domain={[0, 'dataMax + 5000000']}
+                  tickFormatter={(value) => `${(value / 1_000_000)}M`}
+                />
+                <Tooltip
+                  formatter={(value: number) => `${(value / 1_000_000).toFixed(2)}M`}
+                />
+                <Bar dataKey="value">
+                  <LabelList
+                    dataKey="value"
+                    position="insideBottom"
+                    formatter={(value: number) => `${(value / 1_000_000).toFixed(2)} M`}
+                    fill="#fff"
+                    style={{ fontSize: '12px', fontWeight: 'bold' }}
+                  />
+                  {topTenSuppliers.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={`hsl(${(index * 35) % 360}, 70%, 50%)`}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <DialogFooter className="justify-end">
+            <Button onClick={() => setChartOpen(false)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
