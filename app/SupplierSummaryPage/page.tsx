@@ -100,8 +100,9 @@ export default function SupplierSummaryPage() {
   return (
     <div className="p-2 min-h-screen flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Purchase Order List By Supplier</h2>
-        <Button onClick={() => setChartOpen(true)}>TOP TEN Suppliers</Button>
+        <h2 className="gradient-title text-2xl">Issued Purchase Orders</h2>
+        <Button onClick={() => setChartOpen(true)} className="bg-teal-600 text-white hover:bg-teal-700">TOP TEN Suppliers</Button>
+
       </div>
 
       <div className="flex gap-4 mb-4">
@@ -149,7 +150,7 @@ export default function SupplierSummaryPage() {
             </thead>
             <tbody>
               {filteredSummary.map((item, index) => (
-                <tr key={`${item.supplierId}-${index}`} className="even:bg-gray-50">
+                <tr key={`${item.supplierId}-${index}`} className="even:bg-white/20 hover:bg-white/30 transition">
                   <td className="border px-4 py-1 text-left w-16">{index + 1}</td>
                   <td className="truncate border px-4 py-1 w-72">{item.supplier}</td>
                   <td className="truncate border px-4 py-1 w-72">{showInSAR ? 'SAR' : item.currency}</td>
@@ -253,32 +254,39 @@ export default function SupplierSummaryPage() {
           <DialogHeader>
             <DialogTitle>Top 10 Suppliers</DialogTitle>
           </DialogHeader>
-          <div className="h-[400px] mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={topTenSuppliers}
-                margin={{ top: 20, right: 30, left: 0, bottom: 40 }}
-              >
-                <XAxis dataKey="name" angle={-30} textAnchor="end" />
-                <YAxis domain={[0, 'dataMax + 3000000']} />  {/* Add padding to top */}
-                <Tooltip />
-                <Bar dataKey="value">
-                  <LabelList
-                    dataKey="value"
-                    position="inside"
-                    formatter={(value: number) => `${(value / 1_000_000).toFixed(2)} M`}
-                    fill="#ffffff"
-                  />
-                  {topTenSuppliers.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={`hsl(${(index * 35) % 360}, 70%, 50%)`}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="relative overflow-visible h-[400px] mt-4">
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart
+      data={topTenSuppliers}
+      margin={{ top: 60, right: 30, left: 0, bottom: 40 }}
+    >
+      <XAxis dataKey="name" angle={-30} textAnchor="end" height={70} />
+      <YAxis
+        domain={[0, 'dataMax + 5000000']}
+        tickFormatter={(value) => `${(value / 1_000_000)}M`}
+      />
+      <Tooltip
+        formatter={(value: number) => `${(value / 1_000_000).toFixed(2)}M`}
+      />
+      <Bar dataKey="value">
+        <LabelList
+          dataKey="value"
+           position="insideBottom"
+          formatter={(value: number) => `${(value / 1_000_000).toFixed(2)} M`}
+          fill="#fff"
+          style={{ fontSize: '12px', fontWeight: 'bold' }}
+        />
+        {topTenSuppliers.map((entry, index) => (
+          <Cell
+            key={`cell-${index}`}
+            fill={`hsl(${(index * 35) % 360}, 70%, 50%)`}
+          />
+        ))}
+      </Bar>
+    </BarChart>
+  </ResponsiveContainer>
+</div>
+
           <DialogFooter><Button onClick={() => setChartOpen(false)}>Close</Button></DialogFooter>
         </DialogContent>
       </Dialog>
