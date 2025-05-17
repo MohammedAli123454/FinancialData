@@ -98,14 +98,13 @@ export default function SupplierSummaryPage() {
   };
 
   return (
-    <div className="p-2 min-h-screen flex flex-col">
-      <div className="flex justify-between items-center mb-4">
+    <div className="p-2 min-h-screen flex flex-col gap-y-4">
+      <div className="flex justify-between items-center">
         <h2 className="gradient-title text-2xl">Issued Purchase Orders</h2>
         <Button onClick={() => setChartOpen(true)} className="bg-teal-600 text-white hover:bg-teal-700">TOP TEN Suppliers</Button>
-
       </div>
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex gap-4">
         <Input
           placeholder="Search Supplier..."
           value={searchTerm}
