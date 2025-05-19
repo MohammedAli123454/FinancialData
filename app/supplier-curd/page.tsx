@@ -8,7 +8,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { fetchJson } from "./utils/fetchJson";
+// import { fetchJson } from "./utils/fetchJson";
+import { fetchJson } from "@/app/utils/fetchJson"
 import type { Supplier, SupplierForm } from "./types";
 
 import { Button } from "@/components/ui/button";

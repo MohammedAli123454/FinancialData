@@ -44,6 +44,20 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         { name: 'Employee', path: '/Employee' },
       ],
     },
+
+
+    {
+      title: 'Bill Payables Section',
+      links: [
+        { name: 'Create New Supplier', path: '/supplier-curd' },
+        { name: 'Create New PO', path: '/Pos-curd' },
+        { name: 'Purchase Orders Summary', path: '/SupplierSummaryPage' },
+      ],
+    },
+
+
+
+
   ];
 
   // ─── Define your handler inside the component so it sees router & startTransition ───
