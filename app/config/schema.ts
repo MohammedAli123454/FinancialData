@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, date, integer, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, date, integer, numeric, timestamp } from "drizzle-orm/pg-core";
 
 export const rolesEnum = ['admin', 'superuser', 'user'] as const;
 export type UserRole = typeof rolesEnum[number];
@@ -86,6 +86,49 @@ export const currencyRates = pgTable('currency_rates', {
   rate: numeric('rate').notNull(), // Rate to SAR
 });
 
+
+export const students = pgTable('students', {
+  id: serial('id').primaryKey(),
+  admissionNumber: varchar('admission_number', { length: 50 }).notNull().unique(),
+  firstName: varchar('first_name', { length: 100 }).notNull(),
+  middleName: varchar('middle_name', { length: 100 }),
+  lastName: varchar('last_name', { length: 100 }).notNull(),
+  gender: varchar('gender', { length: 10 }).notNull(),
+  dateOfBirth: date('date_of_birth').notNull(),
+  nationality: varchar('nationality', { length: 50 }),
+  religion: varchar('religion', { length: 50 }),
+  category: varchar('category', { length: 50 }),
+  bloodGroup: varchar('blood_group', { length: 5 }),
+  motherTongue: varchar('mother_tongue', { length: 50 }),
+  photoUrl: text('photo_url'),
+  admissionDate: date('admission_date').notNull(),
+  classEnrolled: varchar('class_enrolled', { length: 20 }).notNull(),
+  section: varchar('section', { length: 10 }),
+  previousSchool: varchar('previous_school', { length: 100 }),
+  transferCertificateNo: varchar('transfer_certificate_no', { length: 50 }),
+  fatherName: varchar('father_name', { length: 100 }),
+  fatherOccupation: varchar('father_occupation', { length: 100 }),
+  motherName: varchar('mother_name', { length: 100 }),
+  motherOccupation: varchar('mother_occupation', { length: 100 }),
+  guardianName: varchar('guardian_name', { length: 100 }),
+  guardianRelation: varchar('guardian_relation', { length: 50 }),
+  contactPhonePrimary: varchar('contact_phone_primary', { length: 20 }).notNull(),
+  contactPhoneSecondary: varchar('contact_phone_secondary', { length: 20 }),
+  email: varchar('email', { length: 100 }),
+  addressLine1: varchar('address_line1', { length: 200 }),
+  addressLine2: varchar('address_line2', { length: 200 }),
+  city: varchar('city', { length: 100 }),
+  state: varchar('state', { length: 100 }),
+  postalCode: varchar('postal_code', { length: 20 }),
+  country: varchar('country', { length: 100 }),
+  aadharNumber: varchar('aadhar_number', { length: 20 }),
+  healthIssues: text('health_issues'),
+  specialNeeds: text('special_needs'),
+  transportMode: varchar('transport_mode', { length: 50 }),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
 
 
 export type User = typeof users.$inferSelect;
