@@ -1,9 +1,98 @@
-'use client';
-import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+"use client";
+import { useState, useEffect } from "react";
+import { useFormContext, Controller } from "react-hook-form";
+import DatePicker from "react-datepicker";
+import Select from "react-select";
+import axios from "axios";
+import "react-datepicker/dist/react-datepicker.css";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+
+// --- Types ---
+type OptionType = { value: string; label: string };
+
+// --- Static Dropdown Data ---
+const genderOptions: OptionType[] = [
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
+  { value: "Other", label: "Other" },
+];
+
+const religionOptions: OptionType[] = [
+  { value: "Christianity", label: "Christianity" },
+  { value: "Islam", label: "Islam" },
+  { value: "Hinduism", label: "Hinduism" },
+  { value: "Buddhism", label: "Buddhism" },
+  { value: "Judaism", label: "Judaism" },
+  { value: "Sikhism", label: "Sikhism" },
+  { value: "Traditional/Indigenous Religions", label: "Traditional/Indigenous Religions" },
+  { value: "Baháʼí Faith", label: "Baháʼí Faith" },
+  { value: "Jainism", label: "Jainism" },
+  { value: "Shinto", label: "Shinto" },
+  { value: "Taoism", label: "Taoism" },
+  { value: "Zoroastrianism", label: "Zoroastrianism" },
+  { value: "No Religion / Atheist / Agnostic", label: "No Religion / Atheist / Agnostic" }
+];
+
+const bloodGroupOptions: OptionType[] = [
+  { value: "A+", label: "A+" },
+  { value: "A-", label: "A-" },
+  { value: "B+", label: "B+" },
+  { value: "B-", label: "B-" },
+  { value: "AB+", label: "AB+" },
+  { value: "AB-", label: "AB-" },
+  { value: "O+", label: "O+" },
+  { value: "O-", label: "O-" }
+];
+
+const classEnrolledOptions: OptionType[] = [
+  { value: "Nursery / Pre-Nursery / Playgroup", label: "Nursery / Pre-Nursery / Playgroup" },
+  { value: "LKG / KG1", label: "LKG / KG1" },
+  { value: "UKG / KG2", label: "UKG / KG2" },
+  { value: "Grade 1 / Class 1", label: "Grade 1 / Class 1" },
+  { value: "Grade 2 / Class 2", label: "Grade 2 / Class 2" },
+  { value: "Grade 3 / Class 3", label: "Grade 3 / Class 3" },
+  { value: "Grade 4 / Class 4", label: "Grade 4 / Class 4" },
+  { value: "Grade 5 / Class 5", label: "Grade 5 / Class 5" },
+  { value: "Grade 6 / Class 6", label: "Grade 6 / Class 6" },
+  { value: "Grade 7 / Class 7", label: "Grade 7 / Class 7" },
+  { value: "Grade 8 / Class 8", label: "Grade 8 / Class 8" },
+  { value: "Grade 9 / Class 9", label: "Grade 9 / Class 9" },
+  { value: "Grade 10 / Class 10", label: "Grade 10 / Class 10" },
+  { value: "Grade 11 / Class 11", label: "Grade 11 / Class 11" },
+  { value: "Grade 12 / Class 12", label: "Grade 12 / Class 12" }
+];
+
+const healthIssuesOptions: OptionType[] = [
+  { value: "None", label: "None" },
+  { value: "Asthma", label: "Asthma" },
+  { value: "Diabetes", label: "Diabetes" },
+  { value: "Epilepsy", label: "Epilepsy" },
+  { value: "Allergies", label: "Allergies" },
+  { value: "Heart Condition", label: "Heart Condition" },
+  { value: "Vision Impairment", label: "Vision Impairment" },
+  { value: "Hearing Impairment", label: "Hearing Impairment" },
+  { value: "Physical Disability", label: "Physical Disability" },
+  { value: "Other (please specify)", label: "Other (please specify)" }
+];
+
+const specialNeedsOptions: OptionType[] = [
+  { value: "None", label: "None" },
+  { value: "Autism Spectrum Disorder (ASD)", label: "Autism Spectrum Disorder (ASD)" },
+  { value: "Attention Deficit Hyperactivity Disorder (ADHD)", label: "Attention Deficit Hyperactivity Disorder (ADHD)" },
+  { value: "Dyslexia", label: "Dyslexia" },
+  { value: "Speech/Language Disorder", label: "Speech/Language Disorder" },
+  { value: "Learning Disability", label: "Learning Disability" },
+  { value: "Intellectual Disability", label: "Intellectual Disability" },
+  { value: "Emotional/Behavioral Disorder", label: "Emotional/Behavioral Disorder" },
+  { value: "Physical Disability", label: "Physical Disability" },
+  { value: "Hearing Impairment", label: "Hearing Impairment" },
+  { value: "Visual Impairment", label: "Visual Impairment" },
+  { value: "Developmental Delay", label: "Developmental Delay" },
+  { value: "Gifted/Talented", label: "Gifted/Talented" },
+  { value: "Other", label: "Other" }
+];
 
 const steps = [
   "Personal Info",
@@ -23,7 +112,36 @@ export default function StudentStepperForm({
   isEdit: boolean;
 }) {
   const [step, setStep] = useState(0);
-  const { register, formState: { errors } } = useFormContext();
+
+  // Typed state for API dropdowns
+  const [countryOptions, setCountryOptions] = useState<OptionType[]>([]);
+  const [motherTongueOptions, setMotherTongueOptions] = useState<OptionType[]>([]);
+
+  const { register, formState: { errors }, control } = useFormContext();
+
+  // Fetch countries and mother tongues from public API
+  useEffect(() => {
+    axios.get("https://restcountries.com/v3.1/all")
+      .then(res => {
+        const countries: OptionType[] = res.data
+          .map((c: any) => ({
+            value: c.name.common,
+            label: c.name.common
+          }))
+          .sort((a: OptionType, b: OptionType) => a.label.localeCompare(b.label));
+        setCountryOptions(countries);
+
+        // For mother tongues, use demonym or nativeName as best as possible
+        const tongues: OptionType[] = res.data
+          .map((c: any) => ({
+            value: c.demonyms?.eng?.m || c.demonym || c.name.common,
+            label: c.demonyms?.eng?.m || c.demonym || c.name.common
+          }))
+          .filter((v: OptionType, i: number, arr: OptionType[]) => v.value && arr.findIndex(x => x.value === v.value) === i) // Unique
+          .sort((a: OptionType, b: OptionType) => a.label.localeCompare(b.label));
+        setMotherTongueOptions(tongues);
+      });
+  }, []);
 
   // Utility for error rendering
   const errorMsg = (err: any) =>
@@ -70,22 +188,78 @@ export default function StudentStepperForm({
           </div>
           <div>
             <Label>Gender</Label>
-            <Input {...register("gender")} />
+            <Controller
+              name="gender"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={genderOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={genderOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Gender"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.gender)}
           </div>
           <div>
             <Label>Date of Birth</Label>
-            <Input type="date" {...register("dateOfBirth")} />
+            <Controller
+              name="dateOfBirth"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  selected={field.value ? new Date(field.value) : null}
+                  onChange={date => field.onChange(date)}
+                  dateFormat="yyyy-MM-dd"
+                  showMonthDropdown
+                  showYearDropdown
+                  dropdownMode="select"
+                  placeholderText="Select Date of Birth"
+                  className="w-full border rounded px-3 py-2"
+                  maxDate={new Date()}
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.dateOfBirth)}
           </div>
           <div>
             <Label>Nationality</Label>
-            <Input {...register("nationality")} />
+            <Controller
+              name="nationality"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={countryOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={countryOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Nationality"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.nationality)}
           </div>
           <div>
             <Label>Religion</Label>
-            <Input {...register("religion")} />
+            <Controller
+              name="religion"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={religionOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={religionOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Religion"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.religion)}
           </div>
           <div>
@@ -95,12 +269,38 @@ export default function StudentStepperForm({
           </div>
           <div>
             <Label>Blood Group</Label>
-            <Input {...register("bloodGroup")} />
+            <Controller
+              name="bloodGroup"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={bloodGroupOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={bloodGroupOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Blood Group"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.bloodGroup)}
           </div>
           <div>
             <Label>Mother Tongue</Label>
-            <Input {...register("motherTongue")} />
+            <Controller
+              name="motherTongue"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={motherTongueOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={motherTongueOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Mother Tongue"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.motherTongue)}
           </div>
           <div>
@@ -152,12 +352,41 @@ export default function StudentStepperForm({
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <Label>Admission Date</Label>
-            <Input type="date" {...register("admissionDate")} />
+            <Controller
+              name="admissionDate"
+              control={control}
+              render={({ field }) => (
+                <DatePicker
+                  selected={field.value ? new Date(field.value) : null}
+                  onChange={date => field.onChange(date)}
+                  dateFormat="yyyy-MM-dd"
+                  showMonthDropdown
+                  showYearDropdown
+                  dropdownMode="select"
+                  placeholderText="Select Admission Date"
+                  className="w-full border rounded px-3 py-2"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.admissionDate)}
           </div>
           <div>
             <Label>Class Enrolled</Label>
-            <Input {...register("classEnrolled")} />
+            <Controller
+              name="classEnrolled"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={classEnrolledOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={classEnrolledOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Class"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.classEnrolled)}
           </div>
           <div>
@@ -223,7 +452,20 @@ export default function StudentStepperForm({
           </div>
           <div>
             <Label>Country</Label>
-            <Input {...register("country")} />
+            <Controller
+              name="country"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={countryOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={countryOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Country"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.country)}
           </div>
           <div>
@@ -239,12 +481,38 @@ export default function StudentStepperForm({
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <Label>Health Issues</Label>
-            <Input {...register("healthIssues")} />
+            <Controller
+              name="healthIssues"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={healthIssuesOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={healthIssuesOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Health Issue"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.healthIssues)}
           </div>
           <div>
             <Label>Special Needs</Label>
-            <Input {...register("specialNeeds")} />
+            <Controller
+              name="specialNeeds"
+              control={control}
+              render={({ field }) => (
+                <Select<OptionType>
+                  {...field}
+                  options={specialNeedsOptions}
+                  onChange={val => field.onChange(val?.value)}
+                  value={specialNeedsOptions.find(opt => opt.value === field.value)}
+                  placeholder="Select Special Need"
+                  isClearable
+                />
+              )}
+            />
             {errorMsg(errors.specialNeeds)}
           </div>
           <div>
