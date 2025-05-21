@@ -212,7 +212,7 @@ export default function StudentStepperForm({
               render={({ field }) => (
                 <DatePicker
                   selected={field.value ? new Date(field.value) : null}
-                  onChange={date => field.onChange(date)}
+                  onChange={date => field.onChange(date ? date.toISOString().slice(0, 10) : "")}
                   dateFormat="yyyy-MM-dd"
                   showMonthDropdown
                   showYearDropdown
@@ -358,7 +358,7 @@ export default function StudentStepperForm({
               render={({ field }) => (
                 <DatePicker
                   selected={field.value ? new Date(field.value) : null}
-                  onChange={date => field.onChange(date)}
+                  onChange={date => field.onChange(date ? date.toISOString().slice(0, 10) : "")}
                   dateFormat="yyyy-MM-dd"
                   showMonthDropdown
                   showYearDropdown

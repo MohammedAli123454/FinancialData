@@ -16,7 +16,14 @@ type Props = {
 };
 
 export default function StudentTable({
-  pages, onEdit, onDelete, loading, filter, hasNextPage, fetchNextPage, loadingMore
+  pages,
+  onEdit,
+  onDelete,
+  loading,
+  filter,
+  hasNextPage,
+  fetchNextPage,
+  loadingMore
 }: Props) {
   const observer = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLTableRowElement | null>(null);
@@ -31,17 +38,21 @@ export default function StudentTable({
     return () => observer.current?.disconnect();
   }, [loading, hasNextPage, fetchNextPage]);
 
-  const data = (pages ?? []).flat();
-  // The API already filters, so optionally just use: const rows = data;
-  const rows = data.filter(row =>
-    (row.firstName?.toLowerCase().includes(filter.toLowerCase()) ||
-      row.lastName?.toLowerCase().includes(filter.toLowerCase()) ||
-      row.admissionNumber?.toLowerCase().includes(filter.toLowerCase()))
-  );
+  // Flatten paginated student arrays
+  const data: Student[] = (pages ?? []).flat();
+
+  // Filter logic (optional since API already filters, but keeps instant UI response)
+  const rows = filter.trim()
+    ? data.filter(row =>
+        (row.firstName?.toLowerCase().includes(filter.toLowerCase()) ||
+         row.lastName?.toLowerCase().includes(filter.toLowerCase()) ||
+         row.admissionNumber?.toLowerCase().includes(filter.toLowerCase()))
+      )
+    : data;
 
   return (
-    <div className="flex-grow overflow-auto rounded-md border border-gray-300 max-h-[calc(100vh-150px)]">
-      <table className="min-w-[1400px] w-full text-sm table-fixed">
+    <div className="flex-grow overflow-auto rounded-md border border-gray-300 max-h-[calc(100vh-200px)] bg-white">
+      <table className="min-w-[1200px] w-full text-sm table-fixed">
         <thead className="bg-gray-100 sticky top-0 z-10">
           <tr>
             <th className="border px-2 py-2 w-14">S.No</th>

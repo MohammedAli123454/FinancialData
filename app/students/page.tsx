@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Plus } from "lucide-react";
 
-// ----------- Zod validation schema, all fields -----------
+// ----------- Zod validation schema -----------
 const studentSchema = z.object({
   admissionNumber: z.string().min(1, "Admission Number is required"),
   firstName: z.string().min(1, "First Name is required"),
@@ -241,7 +241,7 @@ export default function StudentCRUD() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen flex flex-col bg-gray-50">
       <ToastContainer position="top-center" autoClose={3000} />
       <div className="flex-grow flex flex-col items-center w-full py-4">
         <div className="w-full max-w-7xl flex flex-col">
@@ -277,26 +277,26 @@ export default function StudentCRUD() {
               className="w-full"
             />
           </div>
-          <div
-            className={`flex-1 transition-all duration-300 ${showForm ? "max-h-[calc(100vh-350px)]" : "max-h-[calc(100vh-200px)]"} min-h-[250px]`}
-            style={{ width: "100%" }}
-          >
-            <StudentTable
-              pages={studentsPages?.pages?.map(p => p.items) || []}
-              loading={loadingStudents}
-              filter={search}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              hasNextPage={!!hasNextPage}
-              fetchNextPage={fetchNextPage}
-              loadingMore={isFetchingNextPage}
-            />
-            {isError && (
-              <div className="text-red-500 text-center mt-4">
-                {error instanceof Error ? error.message : "Failed to load students"}
-              </div>
-            )}
-          </div>
+          {/* Only show table if form is not open */}
+          {!showForm && (
+            <div className={`flex-1 transition-all duration-300 min-h-[250px]`} style={{ width: "100%" }}>
+              <StudentTable
+                pages={studentsPages?.pages?.map(p => p.items) || []}
+                loading={loadingStudents}
+                filter={search}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                hasNextPage={!!hasNextPage}
+                fetchNextPage={fetchNextPage}
+                loadingMore={isFetchingNextPage}
+              />
+              {isError && (
+                <div className="text-red-500 text-center mt-4">
+                  {error instanceof Error ? error.message : "Failed to load students"}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {/* Delete Dialog */}
         <Dialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
