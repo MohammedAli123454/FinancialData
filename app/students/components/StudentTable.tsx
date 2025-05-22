@@ -1,6 +1,6 @@
-'use client';
+"use client";
 import { useRef, useEffect } from "react";
-import { Edit, Trash2, Loader2 } from "lucide-react";
+import { Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Student } from "../types";
 
@@ -8,6 +8,7 @@ type Props = {
   pages: Student[][];
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  onView: (id: number) => void;
   loading: boolean;
   filter: string;
   hasNextPage: boolean;
@@ -19,6 +20,7 @@ export default function StudentTable({
   pages,
   onEdit,
   onDelete,
+  onView,
   loading,
   filter,
   hasNextPage,
@@ -41,7 +43,7 @@ export default function StudentTable({
   // Flatten paginated student arrays
   const data: Student[] = (pages ?? []).flat();
 
-  // Filter logic (optional since API already filters, but keeps instant UI response)
+  // Filter logic
   const rows = filter.trim()
     ? data.filter(row =>
         (row.firstName?.toLowerCase().includes(filter.toLowerCase()) ||
@@ -52,50 +54,49 @@ export default function StudentTable({
 
   return (
     <div className="flex-grow overflow-auto rounded-md border border-gray-300 max-h-[calc(100vh-200px)] bg-white">
-      <table className="min-w-[1200px] w-full text-sm table-fixed">
+      <table className="min-w-[900px] w-full text-sm table-fixed">
         <thead className="bg-gray-100 sticky top-0 z-10">
           <tr>
-            <th className="border px-2 py-2 w-14">S.No</th>
-            <th className="border px-2 py-2 w-32">Admission No</th>
-            <th className="border px-2 py-2 w-52">Name</th>
-            <th className="border px-2 py-2 w-20">Gender</th>
-            <th className="border px-2 py-2 w-28">DOB</th>
-            <th className="border px-2 py-2 w-20">Class</th>
-            <th className="border px-2 py-2 w-32">Contact</th>
-            <th className="border px-2 py-2 w-52">Father</th>
-            <th className="border px-2 py-2 w-52">Mother</th>
-            <th className="border px-2 py-2 w-40">Address</th>
-            <th className="border px-2 py-2 w-32 text-center">Actions</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-12">S.No</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-40">Student Name</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-32">Admission No</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-28">Class</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-24">Gender</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-28">DOB</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-36">Nationality</th>
+            <th className="border-b border-gray-200 px-2 py-2 w-36 text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={11} className="text-center py-6 border">
-                <Loader2 className="h-8 w-8 mx-auto animate-spin text-blue-500" />
+              <td colSpan={8} className="text-center py-6 border">
+                Loading...
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={11} className="text-center text-muted-foreground py-6 border">
+              <td colSpan={8} className="text-center text-muted-foreground py-6 border">
                 No students found.
               </td>
             </tr>
           ) : (
             rows.map((stu, idx) => (
               <tr key={stu.id} className="even:bg-white/50 hover:bg-gray-50 transition">
-                <td className="border px-2 py-1 w-14">{idx + 1}</td>
-                <td className="border px-2 py-1 w-32 truncate">{stu.admissionNumber}</td>
-                <td className="border px-2 py-1 w-52 truncate">{stu.firstName} {stu.middleName} {stu.lastName}</td>
-                <td className="border px-2 py-1 w-20">{stu.gender}</td>
-                <td className="border px-2 py-1 w-28">{stu.dateOfBirth}</td>
-                <td className="border px-2 py-1 w-20">{stu.classEnrolled} {stu.section}</td>
-                <td className="border px-2 py-1 w-32">{stu.contactPhonePrimary}</td>
-                <td className="border px-2 py-1 w-52 truncate">{stu.fatherName}</td>
-                <td className="border px-2 py-1 w-52 truncate">{stu.motherName}</td>
-                <td className="border px-2 py-1 w-40 truncate">{stu.addressLine1}</td>
-                <td className="border px-2 py-1 w-32 text-center">
+                <td className="border-b border-gray-200 px-2 py-2 w-12">{idx + 1}</td>
+                <td className="border-b border-gray-200 px-2 py-2 w-40 truncate">
+                  {stu.firstName} {stu.middleName} {stu.lastName}
+                </td>
+                <td className="border-b border-gray-200 px-2 py-2 w-32 truncate">{stu.admissionNumber}</td>
+                <td className="border-b border-gray-200 px-2 py-2 w-28 truncate">{stu.classEnrolled}</td>
+                <td className="border-b border-gray-200 px-2 py-2 w-24">{stu.gender}</td>
+                <td className="border-b border-gray-200 px-2 py-2 w-28">{stu.dateOfBirth}</td>
+                <td className="border-b border-gray-200 px-2 py-2 w-36 truncate">{stu.nationality}</td>
+                <td className="border-b border-gray-200 px-2 py-2 w-36 text-center">
                   <div className="flex justify-center gap-2">
+                    <Button size="icon" variant="secondary" onClick={() => onView(stu.id)} aria-label="View">
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     <Button size="icon" variant="outline" onClick={() => onEdit(stu.id)} aria-label="Edit">
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -109,9 +110,9 @@ export default function StudentTable({
           )}
           {hasNextPage && (
             <tr ref={loadMoreRef}>
-              <td colSpan={11} className="text-center py-4 border bg-white">
+              <td colSpan={8} className="text-center py-4 border bg-white">
                 {loadingMore ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-400 mx-auto" />
+                  <span>Loading more...</span>
                 ) : (
                   <span className="text-xs text-gray-500">Loading more...</span>
                 )}

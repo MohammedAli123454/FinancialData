@@ -1,5 +1,4 @@
-'use client';
-
+"use client";
 import { useState, useEffect, useCallback } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { z } from 'zod';
@@ -10,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import StudentTable from "./components/StudentTable";
 import StudentStepperForm from "./components/StudentStepperForm";
+import StudentDetailDialog from "./components/StudentDetailDialog";
 import type { Student, StudentForm } from "./types";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -69,7 +69,6 @@ async function fetchPaginatedStudents({ pageParam = 0, queryKey }: any) {
   return res.json();
 }
 
-// ----------- API wrappers ----------
 const studentApi = {
   create: (payload: StudentForm): Promise<Student> =>
     fetch("/api/students", {
@@ -93,6 +92,7 @@ export default function StudentCRUD() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [viewId, setViewId] = useState<number | null>(null);
 
   const defaultFormValues: StudentForm = {
     admissionNumber: "",
@@ -210,8 +210,8 @@ export default function StudentCRUD() {
   // Set form values on edit
   useEffect(() => {
     if (editId !== null && studentsPages?.pages) {
-      const flatStudents = studentsPages.pages.flatMap(page => page.items);
-      const stu = flatStudents.find(s => s.id === editId);
+      const flatStudents = studentsPages.pages.flatMap((page: any) => page.items);
+      const stu = flatStudents.find((s: Student) => s.id === editId);
       if (stu) {
         Object.entries(defaultFormValues).forEach(([key, def]) => {
           // @ts-ignore
@@ -223,6 +223,11 @@ export default function StudentCRUD() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, studentsPages]);
 
+  // For Delete/Dialog student
+  const flatStudents = studentsPages?.pages?.flatMap((page: any) => page.items) ?? [];
+  const studentToDelete = flatStudents.find((s: Student) => s.id === deleteId) || null;
+  const studentToView = flatStudents.find((s: Student) => s.id === viewId) || null;
+
   const onSubmit = (data: StudentForm) => {
     if (editId !== null) {
       updateMutation.mutate({ id: editId, payload: data });
@@ -233,6 +238,7 @@ export default function StudentCRUD() {
 
   const handleEdit = useCallback((id: number) => setEditId(id), []);
   const handleDelete = useCallback((id: number) => setDeleteId(id), []);
+  const handleView = useCallback((id: number) => setViewId(id), []);
   const handleCancelForm = () => {
     reset(defaultFormValues);
     setEditId(null);
@@ -256,9 +262,9 @@ export default function StudentCRUD() {
           </div>
           {/* Stepper dialog for Add/Edit */}
           {showForm && (
-            <div className="bg-white rounded-lg shadow-lg w-full py-8 px-6 mb-4 z-20">
+            <div className="bg-white rounded-lg shadow-lg w-full py-8 px-6 mb-4 z-20 flex items-center justify-center min-h-[calc(100vh-150px)]">
               <FormProvider {...methods}>
-                <form onSubmit={handleSubmit(onSubmit)}>
+                <form onSubmit={handleSubmit(onSubmit)} className="w-full">
                   <StudentStepperForm
                     onCancel={handleCancelForm}
                     isSubmitting={addMutation.isPending || updateMutation.isPending}
@@ -268,24 +274,28 @@ export default function StudentCRUD() {
               </FormProvider>
             </div>
           )}
-          <div className={`transition-all ${showForm ? "mb-2" : "mb-4"}`}>
-            <Input
-              placeholder="Search by name or admission number"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              aria-label="Search students"
-              className="w-full"
-            />
-          </div>
+          {/* Hide search if form open */}
+          {!showForm && (
+            <div className="mb-4">
+              <Input
+                placeholder="Search by name or admission number"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                aria-label="Search students"
+                className="w-full"
+              />
+            </div>
+          )}
           {/* Only show table if form is not open */}
           {!showForm && (
             <div className={`flex-1 transition-all duration-300 min-h-[250px]`} style={{ width: "100%" }}>
               <StudentTable
-                pages={studentsPages?.pages?.map(p => p.items) || []}
+                pages={studentsPages?.pages?.map((p: any) => p.items) || []}
                 loading={loadingStudents}
                 filter={search}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onView={handleView}
                 hasNextPage={!!hasNextPage}
                 fetchNextPage={fetchNextPage}
                 loadingMore={isFetchingNextPage}
@@ -303,7 +313,12 @@ export default function StudentCRUD() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Confirm Delete</DialogTitle>
-              <div>Are you sure you want to delete this student?</div>
+              <div>
+                {studentToDelete
+                  ? <>Are you sure you want to delete <b>{studentToDelete.firstName} {studentToDelete.lastName}</b> (Class <b>{studentToDelete.classEnrolled}</b>)?</>
+                  : <>Are you sure you want to delete this student?</>
+                }
+              </div>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
@@ -317,6 +332,12 @@ export default function StudentCRUD() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* View Student Detail Dialog */}
+        <StudentDetailDialog
+          open={viewId !== null}
+          onOpenChange={() => setViewId(null)}
+          student={studentToView}
+        />
       </div>
     </div>
   );
