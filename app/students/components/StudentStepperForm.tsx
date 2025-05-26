@@ -166,28 +166,24 @@ export default function StudentStepperForm({
   const gridClass = "grid grid-cols-1 md:grid-cols-2 gap-4 mb-4";
 
   // --- File Upload (for image drag/drop) ---
- 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
     setUploading(true);
     setUploadError("");
     let file = acceptedFiles[0];
-  
-    // Try more aggressive compression if needed
     let compressedFile = file;
     let maxTries = 3;
     let targetSize = 200 * 1024; // 200 KB
     let maxWidthOrHeight = 1024;
     let lastError = "";
-  
+
     for (let i = 0; i < maxTries; i++) {
       const options = {
         maxSizeMB: 0.19, // always a little under 0.2
         maxWidthOrHeight,
         useWebWorker: true,
-        initialQuality: 0.6 // try a lower quality
+        initialQuality: 0.6
       };
-  
       try {
         compressedFile = await imageCompression(compressedFile, options);
         if (compressedFile.size <= targetSize) break;
@@ -195,17 +191,14 @@ export default function StudentStepperForm({
         lastError = err instanceof Error ? err.message : "Compression error";
         break;
       }
-      // Each retry, shrink even more
       maxWidthOrHeight = Math.floor(maxWidthOrHeight * 0.75);
     }
-  
+
     if (compressedFile.size > targetSize) {
       setUploadError("File could not be compressed below 200KB. Please choose a smaller image or crop it.");
       setUploading(false);
       return;
     }
-  
-    // Proceed to upload
     try {
       const form = new FormData();
       form.append("file", compressedFile);
@@ -234,9 +227,30 @@ export default function StudentStepperForm({
     accept: { "image/*": [] },
     maxFiles: 1,
     maxSize: 2 * 1024 * 1024, // 2MB
-    noClick: true, // We'll use our own button
+    noClick: true,
     noKeyboard: true,
   });
+
+  // --- Field Row Helper ---
+  function FieldRow({
+    label,
+    children,
+    error,
+  }: {
+    label: string;
+    children: React.ReactNode;
+    error?: React.ReactNode;
+  }) {
+    return (
+      <div className="grid grid-cols-[150px,1fr] items-center">
+        <Label className="text-sm font-medium text-gray-700">{label}</Label>
+        <div className="m-0 p-0">
+          {children}
+          {error && <div>{error}</div>}
+        </div>
+      </div>
+    );
+  }
 
   // --- Render ---
   return (
@@ -271,29 +285,20 @@ export default function StudentStepperForm({
 
         {/* Step 0: Personal Info */}
         {step === 0 && (
-          <div className={gridClass}>
-            <div>
-              <Label>Admission Number</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FieldRow label="Admission Number" error={errorMsg(errors.admissionNumber)}>
               <Input {...register("admissionNumber")} />
-              {errorMsg(errors.admissionNumber)}
-            </div>
-            <div>
-              <Label>First Name</Label>
+            </FieldRow>
+            <FieldRow label="First Name" error={errorMsg(errors.firstName)}>
               <Input {...register("firstName")} />
-              {errorMsg(errors.firstName)}
-            </div>
-            <div>
-              <Label>Middle Name</Label>
+            </FieldRow>
+            <FieldRow label="Middle Name" error={errorMsg(errors.middleName)}>
               <Input {...register("middleName")} />
-              {errorMsg(errors.middleName)}
-            </div>
-            <div>
-              <Label>Last Name</Label>
+            </FieldRow>
+            <FieldRow label="Last Name" error={errorMsg(errors.lastName)}>
               <Input {...register("lastName")} />
-              {errorMsg(errors.lastName)}
-            </div>
-            <div>
-              <Label>Gender</Label>
+            </FieldRow>
+            <FieldRow label="Gender" error={errorMsg(errors.gender)}>
               <Controller
                 name="gender"
                 control={control}
@@ -308,10 +313,8 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.gender)}
-            </div>
-            <div>
-              <Label>Date of Birth</Label>
+            </FieldRow>
+            <FieldRow label="Date of Birth" error={errorMsg(errors.dateOfBirth)}>
               <Controller
                 name="dateOfBirth"
                 control={control}
@@ -332,10 +335,8 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.dateOfBirth)}
-            </div>
-            <div>
-              <Label>Nationality</Label>
+            </FieldRow>
+            <FieldRow label="Nationality" error={errorMsg(errors.nationality)}>
               <Controller
                 name="nationality"
                 control={control}
@@ -350,10 +351,8 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.nationality)}
-            </div>
-            <div>
-              <Label>Religion</Label>
+            </FieldRow>
+            <FieldRow label="Religion" error={errorMsg(errors.religion)}>
               <Controller
                 name="religion"
                 control={control}
@@ -368,15 +367,11 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.religion)}
-            </div>
-            <div>
-              <Label>Category</Label>
+            </FieldRow>
+            <FieldRow label="Category" error={errorMsg(errors.category)}>
               <Input {...register("category")} />
-              {errorMsg(errors.category)}
-            </div>
-            <div>
-              <Label>Blood Group</Label>
+            </FieldRow>
+            <FieldRow label="Blood Group" error={errorMsg(errors.bloodGroup)}>
               <Controller
                 name="bloodGroup"
                 control={control}
@@ -391,10 +386,8 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.bloodGroup)}
-            </div>
-            <div>
-              <Label>Mother Tongue</Label>
+            </FieldRow>
+            <FieldRow label="Mother Tongue" error={errorMsg(errors.motherTongue)}>
               <Controller
                 name="motherTongue"
                 control={control}
@@ -409,8 +402,7 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.motherTongue)}
-            </div>
+            </FieldRow>
           </div>
         )}
 
@@ -472,45 +464,32 @@ export default function StudentStepperForm({
 
         {/* Step 2: Family/Guardian */}
         {step === 2 && (
-          <div className={gridClass}>
-            <div>
-              <Label>Father Name</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FieldRow label="Father Name" error={errorMsg(errors.fatherName)}>
               <Input {...register("fatherName")} />
-              {errorMsg(errors.fatherName)}
-            </div>
-            <div>
-              <Label>Father Occupation</Label>
+            </FieldRow>
+            <FieldRow label="Father Occupation" error={errorMsg(errors.fatherOccupation)}>
               <Input {...register("fatherOccupation")} />
-              {errorMsg(errors.fatherOccupation)}
-            </div>
-            <div>
-              <Label>Mother Name</Label>
+            </FieldRow>
+            <FieldRow label="Mother Name" error={errorMsg(errors.motherName)}>
               <Input {...register("motherName")} />
-              {errorMsg(errors.motherName)}
-            </div>
-            <div>
-              <Label>Mother Occupation</Label>
+            </FieldRow>
+            <FieldRow label="Mother Occupation" error={errorMsg(errors.motherOccupation)}>
               <Input {...register("motherOccupation")} />
-              {errorMsg(errors.motherOccupation)}
-            </div>
-            <div>
-              <Label>Guardian Name</Label>
+            </FieldRow>
+            <FieldRow label="Guardian Name" error={errorMsg(errors.guardianName)}>
               <Input {...register("guardianName")} />
-              {errorMsg(errors.guardianName)}
-            </div>
-            <div>
-              <Label>Guardian Relation</Label>
+            </FieldRow>
+            <FieldRow label="Guardian Relation" error={errorMsg(errors.guardianRelation)}>
               <Input {...register("guardianRelation")} />
-              {errorMsg(errors.guardianRelation)}
-            </div>
+            </FieldRow>
           </div>
         )}
 
         {/* Step 3: Admission & Previous */}
         {step === 3 && (
-          <div className={gridClass}>
-            <div>
-              <Label>Admission Date</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FieldRow label="Admission Date" error={errorMsg(errors.admissionDate)}>
               <Controller
                 name="admissionDate"
                 control={control}
@@ -530,10 +509,8 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.admissionDate)}
-            </div>
-            <div>
-              <Label>Class Enrolled</Label>
+            </FieldRow>
+            <FieldRow label="Class Enrolled" error={errorMsg(errors.classEnrolled)}>
               <Controller
                 name="classEnrolled"
                 control={control}
@@ -548,71 +525,47 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.classEnrolled)}
-            </div>
-            <div>
-              <Label>Section</Label>
+            </FieldRow>
+            <FieldRow label="Section" error={errorMsg(errors.section)}>
               <Input {...register("section")} />
-              {errorMsg(errors.section)}
-            </div>
-            <div>
-              <Label>Previous School</Label>
+            </FieldRow>
+            <FieldRow label="Previous School" error={errorMsg(errors.previousSchool)}>
               <Input {...register("previousSchool")} />
-              {errorMsg(errors.previousSchool)}
-            </div>
-            <div>
-              <Label>Transfer Certificate No</Label>
+            </FieldRow>
+            <FieldRow label="Transfer Certificate No" error={errorMsg(errors.transferCertificateNo)}>
               <Input {...register("transferCertificateNo")} />
-              {errorMsg(errors.transferCertificateNo)}
-            </div>
+            </FieldRow>
           </div>
         )}
 
         {/* Step 4: Contact & Address */}
         {step === 4 && (
-          <div className={gridClass}>
-            <div>
-              <Label>Contact Phone (Primary)</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FieldRow label="Contact Phone (Primary)" error={errorMsg(errors.contactPhonePrimary)}>
               <Input {...register("contactPhonePrimary")} />
-              {errorMsg(errors.contactPhonePrimary)}
-            </div>
-            <div>
-              <Label>Contact Phone (Secondary)</Label>
+            </FieldRow>
+            <FieldRow label="Contact Phone (Secondary)" error={errorMsg(errors.contactPhoneSecondary)}>
               <Input {...register("contactPhoneSecondary")} />
-              {errorMsg(errors.contactPhoneSecondary)}
-            </div>
-            <div>
-              <Label>Email</Label>
+            </FieldRow>
+            <FieldRow label="Email" error={errorMsg(errors.email)}>
               <Input {...register("email")} />
-              {errorMsg(errors.email)}
-            </div>
-            <div>
-              <Label>Address Line 1</Label>
+            </FieldRow>
+            <FieldRow label="Address Line 1" error={errorMsg(errors.addressLine1)}>
               <Input {...register("addressLine1")} />
-              {errorMsg(errors.addressLine1)}
-            </div>
-            <div>
-              <Label>Address Line 2</Label>
+            </FieldRow>
+            <FieldRow label="Address Line 2" error={errorMsg(errors.addressLine2)}>
               <Input {...register("addressLine2")} />
-              {errorMsg(errors.addressLine2)}
-            </div>
-            <div>
-              <Label>City</Label>
+            </FieldRow>
+            <FieldRow label="City" error={errorMsg(errors.city)}>
               <Input {...register("city")} />
-              {errorMsg(errors.city)}
-            </div>
-            <div>
-              <Label>State</Label>
+            </FieldRow>
+            <FieldRow label="State" error={errorMsg(errors.state)}>
               <Input {...register("state")} />
-              {errorMsg(errors.state)}
-            </div>
-            <div>
-              <Label>Postal Code</Label>
+            </FieldRow>
+            <FieldRow label="Postal Code" error={errorMsg(errors.postalCode)}>
               <Input {...register("postalCode")} />
-              {errorMsg(errors.postalCode)}
-            </div>
-            <div>
-              <Label>Country</Label>
+            </FieldRow>
+            <FieldRow label="Country" error={errorMsg(errors.country)}>
               <Controller
                 name="country"
                 control={control}
@@ -627,21 +580,17 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.country)}
-            </div>
-            <div>
-              <Label>Aadhar Number</Label>
+            </FieldRow>
+            <FieldRow label="Aadhar Number" error={errorMsg(errors.aadharNumber)}>
               <Input {...register("aadharNumber")} />
-              {errorMsg(errors.aadharNumber)}
-            </div>
+            </FieldRow>
           </div>
         )}
 
         {/* Step 5: Medical & Other */}
         {step === 5 && (
-          <div className={gridClass}>
-            <div>
-              <Label>Health Issues</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FieldRow label="Health Issues" error={errorMsg(errors.healthIssues)}>
               <Controller
                 name="healthIssues"
                 control={control}
@@ -656,10 +605,8 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.healthIssues)}
-            </div>
-            <div>
-              <Label>Special Needs</Label>
+            </FieldRow>
+            <FieldRow label="Special Needs" error={errorMsg(errors.specialNeeds)}>
               <Controller
                 name="specialNeeds"
                 control={control}
@@ -674,10 +621,8 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.specialNeeds)}
-            </div>
-            <div>
-              <Label>Transport Mode</Label>
+            </FieldRow>
+            <FieldRow label="Transport Mode" error={errorMsg(errors.transportMode)}>
               <Controller
                 name="transportMode"
                 control={control}
@@ -692,13 +637,10 @@ export default function StudentStepperForm({
                   />
                 )}
               />
-              {errorMsg(errors.transportMode)}
-            </div>
-            <div>
-              <Label>Remarks</Label>
+            </FieldRow>
+            <FieldRow label="Remarks" error={errorMsg(errors.remarks)}>
               <Input {...register("remarks")} />
-              {errorMsg(errors.remarks)}
-            </div>
+            </FieldRow>
           </div>
         )}
 
