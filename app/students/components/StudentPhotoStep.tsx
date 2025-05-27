@@ -1,4 +1,3 @@
-// StudentPhotoStep.tsx
 "use client";
 import { Label } from "@/components/ui/label";
 import { Loader2, UploadCloud } from "lucide-react";
@@ -12,44 +11,51 @@ export default function StudentPhotoStep() {
   const photoUrl = watch("photoUrl");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [compressedSize, setCompressedSize] = useState<number | null>(null);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
       setUploading(true);
       setUploadError("");
+      setCompressedSize(null);
+
       let file = acceptedFiles[0];
       let compressedFile = file;
-      let maxTries = 3;
-      let targetSize = 200 * 1024;
-      let maxWidthOrHeight = 1024;
+      const targetSize = 20 * 1024; // 20KB
+      let maxTries = 5;
+      let maxWidthOrHeight = 512; // Aggressively shrink if needed
       let lastError = "";
 
       for (let i = 0; i < maxTries; i++) {
         const options = {
-          maxSizeMB: 0.19,
+          maxSizeMB: 0.018, // ~18KB
           maxWidthOrHeight,
           useWebWorker: true,
-          initialQuality: 0.6,
+          initialQuality: 0.2, // Very aggressive
+          alwaysKeepResolution: false,
         };
         try {
           compressedFile = await imageCompression(compressedFile, options);
           if (compressedFile.size <= targetSize) break;
         } catch (err) {
-          lastError =
-            err instanceof Error ? err.message : "Compression error";
+          lastError = err instanceof Error ? err.message : "Compression error";
           break;
         }
+        // Try reducing size more
         maxWidthOrHeight = Math.floor(maxWidthOrHeight * 0.75);
       }
 
+      setCompressedSize(compressedFile.size);
+
       if (compressedFile.size > targetSize) {
         setUploadError(
-          "File could not be compressed below 200KB. Please choose a smaller image or crop it."
+          `Image could not be compressed below 20KB (final: ${(compressedFile.size / 1024).toFixed(1)}KB). Please crop or select a simpler/lower-res image.`
         );
         setUploading(false);
         return;
       }
+
       try {
         const form = new FormData();
         form.append("file", compressedFile);
@@ -132,6 +138,11 @@ export default function StudentPhotoStep() {
         <div className="flex items-center gap-2 text-blue-500 mt-4 text-sm">
           <Loader2 className="animate-spin w-5 h-5" />
           Uploading...
+        </div>
+      )}
+      {compressedSize !== null && !uploadError && (
+        <div className="text-xs text-green-600 mt-2">
+          Compressed size: {(compressedSize / 1024).toFixed(1)} KB
         </div>
       )}
       {uploadError && (
