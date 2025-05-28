@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, date, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, date, integer, numeric, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const rolesEnum = ['admin', 'superuser', 'user'] as const;
 export type UserRole = typeof rolesEnum[number];
@@ -128,6 +128,23 @@ export const students = pgTable('students', {
   remarks: text('remarks'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
+});
+
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+
+  certified_date: date("certified_date").notNull(),
+  invoice_no: varchar("invoice_no", { length: 50 }).notNull(),
+  invoice_date: date("invoice_date").notNull(),
+  payment_type: varchar("payment_type", { length: 50 }).notNull(),
+  payment_due_date: date("payment_due_date").notNull(),
+  invoice_amount: numeric("invoice_amount", { precision: 12, scale: 2 }).notNull(),
+  payable: numeric("payable", { precision: 12, scale: 2 }).notNull(),
+  supplier_id: integer("supplier_id").references(() => suppliers.id).notNull(), // assumes suppliers table exists
+  po_number: varchar("po_number", { length: 50 }).notNull(),
+  contract_type: varchar("contract_type", { length: 50 }).notNull(),
+  certified: boolean("certified").default(false).notNull(),
+  created_at: date("created_at").defaultNow(), // or timestamp("created_at", { withTimezone: true }).defaultNow()
 });
 
 
