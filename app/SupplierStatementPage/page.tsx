@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import Select from "react-select";
-import { BarLoader } from "react-spinners";
+import { BarLoader, PulseLoader } from "react-spinners";
 import "react-day-picker/dist/style.css";
 
 // --- Types ---
@@ -79,6 +79,7 @@ export default function SupplierStatementPage() {
 
   // State
   const [suppliers, setSuppliers] = useState<OptionType[]>([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(true); // NEW
   const [statement, setStatement] = useState<Statement | null>(null);
   const [loading, setLoading] = useState(false);
   const [isStartOpen, setIsStartOpen] = useState(false);
@@ -91,12 +92,14 @@ export default function SupplierStatementPage() {
 
   // Fetch suppliers on mount
   useEffect(() => {
+    setSuppliersLoading(true);
     fetch("/api/suppliers")
       .then((res) => res.json())
       .then((response) => {
         const data = response.data || [];
         setSuppliers(data.map((s: any) => ({ value: s.id, label: s.name })));
-      });
+      })
+      .finally(() => setSuppliersLoading(false));
   }, []);
 
   // Form submit
@@ -138,22 +141,29 @@ export default function SupplierStatementPage() {
             className="bg-white shadow-sm rounded-lg p-6 space-y-3 border"
           >
             <FieldRow label="Supplier" error={errors.supplierId?.message}>
-              <Controller
-                name="supplierId"
-                control={control}
-                rules={{ required: "Supplier is required" }}
-                render={({ field }) => (
-                  <Select<OptionType>
-                    {...field}
-                    options={suppliers}
-                    onChange={(val) => field.onChange(val?.value)}
-                    value={suppliers.find((opt) => opt.value === field.value) || null}
-                    placeholder="Select Supplier"
-                    isClearable
-                    aria-label="Supplier"
-                  />
-                )}
-              />
+              {suppliersLoading ? (
+                <div className="flex items-center gap-2">
+                  <PulseLoader size={10} color="#2563eb" />
+                  <span className="text-gray-500">Loading suppliers...</span>
+                </div>
+              ) : (
+                <Controller
+                  name="supplierId"
+                  control={control}
+                  rules={{ required: "Supplier is required" }}
+                  render={({ field }) => (
+                    <Select<OptionType>
+                      {...field}
+                      options={suppliers}
+                      onChange={(val) => field.onChange(val?.value)}
+                      value={suppliers.find((opt) => opt.value === field.value) || null}
+                      placeholder="Select Supplier"
+                      isClearable
+                      aria-label="Supplier"
+                    />
+                  )}
+                />
+              )}
             </FieldRow>
             <FieldRow label="Filter by Date">
               <Controller
@@ -337,38 +347,47 @@ export default function SupplierStatementPage() {
               <tbody>
                 {/* Opening Balance Row */}
                 <tr className="font-bold bg-green-50">
-                  <td className="border-b px-2 py-2"></td> {/* S.No */}
-                  <td className="border-b px-2 py-2"></td> {/* Date */}
-                  <td className="border-b px-2 py-2"></td> {/* Invoice No */}
-                  <td className="border-b px-2 py-2">Opening Balance</td> {/* Particulars */}
-                  <td className="border-b px-2 py-2 text-center"></td> {/* Debit */}
-                  <td className="border-b px-2 py-2 text-center">{Number(statement.totalPOValue).toLocaleString()}</td> {/* Credit */}
-                  <td className="border-b px-2 py-2 text-center">{Number(statement.totalPOValue).toLocaleString()}</td> {/* Balance */}
+                  <td className="border-b px-2 py-2"></td>
+                  <td className="border-b px-2 py-2"></td>
+                  <td className="border-b px-2 py-2"></td>
+                  <td className="border-b px-2 py-2">Opening Balance</td>
+                  <td className="border-b px-2 py-2 text-center"></td>
+                  <td className="border-b px-2 py-2 text-center">{Number(statement.totalPOValue).toLocaleString()}</td>
+                  <td className="border-b px-2 py-2 text-center">{Number(statement.totalPOValue).toLocaleString()}</td>
                 </tr>
-                {/* Statement Rows */}
-                {(() => {
-                  let runningBalance = Number(statement.totalPOValue);
-                  return statement.invoices.map((inv, idx) => {
-                    const debit = Number(inv.payable);
-                    runningBalance -= debit;
-                    return (
-                      <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                        <td className="border-b px-2 py-2">{idx + 1}</td>
-                        <td className="border-b px-2 py-2">{inv.certified_date}</td>
-                        <td className="border-b px-2 py-2">{inv.invoice_no}</td>
-                        <td className="border-b px-2 py-2">{inv.payment_type}</td>
-                        <td className="border-b px-2 py-2 text-center">{debit ? debit.toLocaleString() : ""}</td>
-                        <td className="border-b px-2 py-2 text-center"></td>
-                        <td className="border-b px-2 py-2 text-center">{runningBalance.toLocaleString()}</td>
-                      </tr>
-                    );
-                  });
-                })()}
+                {/* Statement Rows OR No Data Row */}
+                {statement.invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-gray-500">
+                      No certified invoices found for the selected period.
+                    </td>
+                  </tr>
+                ) : (
+                  (() => {
+                    let runningBalance = Number(statement.totalPOValue);
+                    return statement.invoices.map((inv, idx) => {
+                      const debit = Number(inv.payable);
+                      runningBalance -= debit;
+                      return (
+                        <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                          <td className="border-b px-2 py-2">{idx + 1}</td>
+                          <td className="border-b px-2 py-2">{inv.certified_date}</td>
+                          <td className="border-b px-2 py-2">{inv.invoice_no}</td>
+                          <td className="border-b px-2 py-2">{inv.payment_type}</td>
+                          <td className="border-b px-2 py-2 text-center">
+                            {debit ? debit.toLocaleString() : ""}
+                          </td>
+                          <td className="border-b px-2 py-2 text-center"></td>
+                          <td className="border-b px-2 py-2 text-center">
+                            {runningBalance.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()
+                )}
               </tbody>
             </table>
-            {statement.invoices.length === 0 && (
-              <div className="text-center py-8 text-gray-500">No certified invoices found for the selected period.</div>
-            )}
           </div>
         </section>
       )}

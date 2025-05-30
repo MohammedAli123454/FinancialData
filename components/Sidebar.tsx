@@ -52,6 +52,8 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         { name: 'Create New Supplier', path: '/supplier-curd' },
         { name: 'Create New PO', path: '/Pos-curd' },
         { name: 'Purchase Orders Summary', path: '/SupplierSummaryPage' },
+        { name: 'Certified Invoice Statement', path: '/SupplierStatementPage' },
+        { name: 'Upload Certified Invoices', path: '/UploadInvoices' },
       ],
     },
 
