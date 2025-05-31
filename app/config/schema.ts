@@ -78,6 +78,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   currency: varchar('currency', { length: 10 }).notNull(), // ✅ moved here
   poValue: numeric('po_value').notNull(),
   poValueWithVAT: numeric('po_value_with_vat').notNull(),
+  masterPo: varchar('master_po', { length: 20 }),
 });
 
 
@@ -149,3 +150,4 @@ export const invoices = pgTable("invoices", {
 
 
 export type User = typeof users.$inferSelect;
+

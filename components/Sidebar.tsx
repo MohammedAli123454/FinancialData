@@ -52,14 +52,11 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         { name: 'Create New Supplier', path: '/supplier-curd' },
         { name: 'Create New PO', path: '/Pos-curd' },
         { name: 'Purchase Orders Summary', path: '/SupplierSummaryPage' },
+        { name: 'Vendor Invoive Entry', path: '/VendorInvoiceEntry' },
         { name: 'Certified Invoice Statement', path: '/SupplierStatementPage' },
         { name: 'Upload Certified Invoices', path: '/UploadInvoices' },
       ],
     },
-
-
-
-
   ];
 
   // ─── Define your handler inside the component so it sees router & startTransition ───
