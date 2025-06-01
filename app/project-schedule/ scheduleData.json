@@ -1,0 +1,327 @@
+{
+    "name": "Manufacturing and Supply of Blast Resistant Operation Shelter at YASREF",
+    "start": "2024-12-15",
+    "finish": "2025-07-17",
+    "children": [
+      {
+        "name": "Project Milestone",
+        "children": [
+          { "name": "Award of Contract and Contract review", "start": "2024-12-15", "finish": "2024-12-15" },
+          { "name": "Kick Off Meeting", "start": "2024-12-26", "finish": "2024-12-26" },
+          { "name": "Completion of Steel Fabrication & Painting", "start": "2025-05-19", "finish": "2025-05-19" },
+          { "name": "Readiness of building for FAT", "start": "2025-07-10", "finish": "2025-07-10" },
+          { "name": "FAT Completion", "start": "2025-07-12", "finish": "2025-07-12" },
+          { "name": "Ready for Delivery", "start": "2025-07-17", "finish": "2025-07-17" }
+        ]
+      },
+      {
+        "name": "Common Documents",
+        "children": [
+          {
+            "name": "Submission",
+            "children": [
+              {
+                "name": "Project Management",
+                "children": [
+                  { "name": "Vendor Document Register", "start": "2024-12-27", "finish": "2025-01-02" },
+                  { "name": "Project Schedule", "start": "2024-12-26", "finish": "2025-01-10" }
+                ]
+              },
+              {
+                "name": "QA/QC",
+                "children": [
+                  { "name": "Inspection & Test Plan", "start": "2024-12-27", "finish": "2025-01-02" },
+                  { "name": "Welding Procedure Specification & PQR's", "start": "2025-01-06", "finish": "2025-01-15" },
+                  { "name": "Non Destructive Test Procedures", "start": "2025-01-06", "finish": "2025-01-15" },
+                  { "name": "Surface Preparation & Painting Procedure", "start": "2025-01-06", "finish": "2025-01-15" },
+                  { "name": "FAT Procedure", "start": "2025-03-05", "finish": "2025-03-14" },
+                  { "name": "Manufacturer Record Book Index", "start": "2025-04-03", "finish": "2025-04-14" }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Approval",
+            "children": [
+              {
+                "name": "Project Management",
+                "children": [
+                  { "name": "Vendor Document Register", "start": "2025-01-03", "finish": "2025-01-22" },
+                  { "name": "Project Schedule", "start": "2025-01-13", "finish": "2025-01-30" }
+                ]
+              },
+              {
+                "name": "QA/QC",
+                "children": [
+                  { "name": "Inspection & Test Plan", "start": "2025-01-03", "finish": "2025-01-22" },
+                  { "name": "Welding Procedure Specification & PQR's", "start": "2025-01-16", "finish": "2025-02-04" },
+                  { "name": "Non Destructive Test Procedures", "start": "2025-01-16", "finish": "2025-02-04" },
+                  { "name": "Surface Preparation & Painting Procedure", "start": "2025-01-16", "finish": "2025-02-04" },
+                  { "name": "FAT Procedure", "start": "2025-03-17", "finish": "2025-04-07" },
+                  { "name": "Manufacturer Record Book Index", "start": "2025-04-15", "finish": "2025-05-02" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Engineering",
+        "children": [
+          {
+            "name": "Architectural",
+            "children": [
+              { "name": "General Arrangement Drawing Plan, Sections and Elevations", "start": "2024-12-26", "finish": "2025-01-09" },
+              { "name": "False Ceiling Layout & Installation Details", "start": "2025-01-10", "finish": "2025-01-17" },
+              { "name": "Architectural Door/Window Schedule", "start": "2025-01-20", "finish": "2025-01-27" },
+              { "name": "Architectural Construction Details- Wall/Floor/Roof", "start": "2025-01-20", "finish": "2025-01-24" },
+              { "name": "Architectural-Room Name plates/Signage Details", "start": "2025-01-28", "finish": "2025-02-03" },
+              { "name": "Vendor Datasheet-Architectural-External Doors & Windows", "start": "2025-01-21", "finish": "2025-02-05" },
+              { "name": "Vendor Datasheet-Architectural-Misc. Materials", "start": "2025-01-30", "finish": "2025-02-12" }
+            ]
+          },
+          {
+            "name": "Structural",
+            "children": [
+              { "name": "Structural Design Basis for BRM, Yasref", "start": "2024-12-26", "finish": "2025-01-02" },
+              { "name": "Structural Blast Analysis Calculations", "start": "2025-01-23", "finish": "2025-02-05" },
+              { "name": "Structural Inplace Analysis Calculations", "start": "2025-02-26", "finish": "2025-03-04" },
+              { "name": "Structural Lifting Analysis Calculations", "start": "2025-02-28", "finish": "2025-03-06" },
+              { "name": "Structural Floor,Roof & Wall framing drawings", "start": "2025-02-26", "finish": "2025-03-04" },
+              { "name": "Structural Penetration details", "start": "2025-03-06", "finish": "2025-03-10" },
+              { "name": "Structural Internal and external support details", "start": "2025-03-10", "finish": "2025-03-14" },
+              { "name": "Structural Baseplate/Foot print layout", "start": "2025-03-17", "finish": "2025-03-19" }
+            ]
+          },
+          {
+            "name": "Electrical, Instrumentation & Telecom",
+            "children": [
+              { "name": "Vendor Data - Electrical, Telecom", "start": "2025-02-05", "finish": "2025-02-10" },
+              { "name": "Office Electrical, Instrumentation and Telecom Layout Plan, Elevations", "start": "2025-02-11", "finish": "2025-02-20" },
+              { "name": "Office DB Single Line Diagram and Earthing schematic", "start": "2025-02-11", "finish": "2025-02-20" },
+              { "name": "Telecom Block diagram", "start": "2025-02-17", "finish": "2025-02-20" },
+              { "name": "Electrical, Instrumentation,HVAC and Telecom Cable Schedule", "start": "2025-02-17", "finish": "2025-02-20" }
+            ]
+          },
+          {
+            "name": "HVAC",
+            "children": [
+              { "name": "HVAC System Sizing Calculations", "start": "2024-12-27", "finish": "2025-01-10" },
+              { "name": "HVAC Air Flow Diagram & Ducting Layout", "start": "2025-01-13", "finish": "2025-01-17" },
+              { "name": "HVAC System Control Philosophy", "start": "2025-01-13", "finish": "2025-01-24" },
+              { "name": "Vendor Data Sheet - HVAC Machines", "start": "2025-01-24", "finish": "2025-01-29" },
+              { "name": "Vendor Data Sheet - Ventilating Fans", "start": "2025-01-24", "finish": "2025-01-29" },
+              { "name": "Vendor Data Sheet - Ducting accessories", "start": "2025-02-07", "finish": "2025-02-12" },
+              { "name": "Vendor Data Sheet - Motorised Dampers", "start": "2025-02-05", "finish": "2025-02-10" },
+              { "name": "Vendor Data Sheet - Manual Dampers", "start": "2025-02-07", "finish": "2025-02-12" },
+              { "name": "Vendor Data Sheet - HVAC Instruments", "start": "2025-01-27", "finish": "2025-01-30" }
+            ]
+          },
+          {
+            "name": "Fire & Gas",
+            "children": [
+              { "name": "Vendor Data - Fire and Gas", "start": "2025-02-05", "finish": "2025-02-10" },
+              { "name": "Fire and Gas Layout Plan, Elevations", "start": "2025-02-11", "finish": "2025-02-20" },
+              { "name": "Fire and Gas Cable Schedule", "start": "2025-02-13", "finish": "2025-02-20" },
+              { "name": "Fire and Gas Block diagram", "start": "2025-02-21", "finish": "2025-02-25" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Procurement",
+        "children": [
+          {
+            "name": "Structural",
+            "children": [
+              { "name": "Structural steel", "start": "2025-03-24", "finish": "2025-04-11" },
+              { "name": "Secondary Structural Steel", "start": "2025-04-07", "finish": "2025-04-21" },
+              { "name": "Paint", "start": "2025-02-24", "finish": "2025-03-10" }
+            ]
+          },
+          {
+            "name": "Architectural",
+            "children": [
+              { "name": "Rockwool Insulation", "start": "2025-03-04", "finish": "2025-04-19" },
+              { "name": "Internal wall lining", "start": "2025-03-04", "finish": "2025-04-05" },
+              { "name": "False ceiling tiles", "start": "2025-03-04", "finish": "2025-04-05" },
+              { "name": "Cement fiber board", "start": "2025-03-04", "finish": "2025-04-05" },
+              { "name": "Vinyl Flooring", "start": "2025-03-04", "finish": "2025-04-05" },
+              { "name": "External door", "start": "2025-02-25", "finish": "2025-06-25" },
+              { "name": "Windows", "start": "2025-02-25", "finish": "2025-06-25" },
+              { "name": "Sanitary items", "start": "2025-03-05", "finish": "2025-03-26" }
+            ]
+          },
+          {
+            "name": "Electrical",
+            "children": [
+              { "name": "MCTs", "start": "2025-03-12", "finish": "2025-04-13" },
+              { "name": "Lights", "start": "2025-03-12", "finish": "2025-05-11" },
+              { "name": "Switch & Socket", "start": "2025-03-12", "finish": "2025-04-06" },
+              { "name": "Lighting Junction Box", "start": "2025-03-12", "finish": "2025-04-27" },
+              { "name": "Lighting Power Distribution Board (Lighting, Small Power)", "start": "2025-03-12", "finish": "2025-04-20" },
+              { "name": "Power Transformer", "start": "2025-03-12", "finish": "2025-04-13" },
+              { "name": "Electrical Cable - Power and Earthing", "start": "2025-03-12", "finish": "2025-05-11" },
+              { "name": "Cable Gland & Accessories", "start": "2025-03-12", "finish": "2025-03-26" },
+              { "name": "Cable Trays / Trunking  & Accessories", "start": "2025-03-12", "finish": "2025-04-06" },
+              { "name": "Earthing Materials", "start": "2025-03-12", "finish": "2025-04-13" }
+            ]
+          },
+          {
+            "name": "HVAC",
+            "children": [
+              { "name": "HVAC Unit", "start": "2025-02-18", "finish": "2025-06-25" },
+              { "name": "HVAC Duct", "start": "2025-02-26", "finish": "2025-04-06" },
+              { "name": "Volume Control Damper", "start": "2025-03-04", "finish": "2025-04-05" },
+              { "name": "Grilles/Diffusers", "start": "2025-03-04", "finish": "2025-04-05" },
+              { "name": "Blast Damper", "start": "2025-03-04", "finish": "2025-04-19" },
+              { "name": "Motorized Fire Damper", "start": "2025-02-28", "finish": "2025-04-21" },
+              { "name": "HVAC Instruments", "start": "2025-03-11", "finish": "2025-05-10" }
+            ]
+          },
+          {
+            "name": "Fire & Gas and Fire Protection",
+            "children": [
+              { "name": "Smoke Detector", "start": "2025-02-28", "finish": "2025-05-20" },
+              { "name": "Duct Smoke Detector", "start": "2025-02-28", "finish": "2025-05-20" },
+              { "name": "Manual Alarm Call Point", "start": "2025-02-28", "finish": "2025-05-20" },
+              { "name": "Sounder", "start": "2025-02-28", "finish": "2025-05-20" },
+              { "name": "Beacon", "start": "2025-02-28", "finish": "2025-05-20" },
+              { "name": "Toxic Gas Detector", "start": "2025-02-28", "finish": "2025-05-20" },
+              { "name": "HC Gas Detector", "start": "2025-02-28", "finish": "2025-05-20" },
+              { "name": "F&G Junction Box", "start": "2025-03-17", "finish": "2025-05-02" },
+              { "name": "F&G Cables", "start": "2025-03-12", "finish": "2025-05-11" },
+              { "name": "Cable Glands", "start": "2025-03-12", "finish": "2025-03-26" },
+              { "name": "Cable Tray HDG", "start": "2025-03-12", "finish": "2025-04-13" },
+              { "name": "Fire Extinguishers", "start": "2025-03-12", "finish": "2025-03-19" },
+              { "name": "Safety Signs Labels", "start": "2025-03-12", "finish": "2025-03-19" }
+            ]
+          },
+          {
+            "name": "Telecom",
+            "children": [
+              { "name": "Telecom cables", "start": "2025-03-12", "finish": "2025-05-11" },
+              { "name": "Telecom Junction Box's", "start": "2025-03-12", "finish": "2025-04-06" },
+              { "name": "Telecom socket and other outlet", "start": "2025-03-12", "finish": "2025-04-13" },
+              { "name": "Cable Trunking With Cover", "start": "2025-03-12", "finish": "2025-04-13" }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Construction",
+        "children": [
+          {
+            "name": "Hot works",
+            "children": [
+              {
+                "name": "Structural",
+                "children": [
+                  { "name": "Base Frame  Fabrication", "start": "2025-04-12", "finish": "2025-04-21" },
+                  { "name": "Roof  Frame Fabrication", "start": "2025-04-14", "finish": "2025-04-22" },
+                  { "name": "Wall Frame Fabrication", "start": "2025-04-18", "finish": "2025-04-25" },
+                  { "name": "Hot works ( Installation of supports,Penetration etc)", "start": "2025-04-26", "finish": "2025-05-02" },
+                  { "name": "Building Assembly", "start": "2025-05-03", "finish": "2025-05-07" },
+                  { "name": "Blasting & Priming", "start": "2025-05-08", "finish": "2025-05-13" },
+                  { "name": "Final Painting", "start": "2025-05-14", "finish": "2025-05-19" }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Cold Works",
+            "children": [
+              {
+                "name": "Architectural Fitout",
+                "children": [
+                  { "name": "Insulation Installation(inside room)", "start": "2025-05-20", "finish": "2025-05-27" },
+                  { "name": "Internal wall Linings(GI Sheet)", "start": "2025-05-28", "finish": "2025-06-04" },
+                  { "name": "Floor Cement Fiber Board and Vinyl Installation", "start": "2025-06-09", "finish": "2025-06-16" },
+                  { "name": "External Doors Installation", "start": "2025-06-27", "finish": "2025-06-28" },
+                  { "name": "Windows Installation", "start": "2025-06-27", "finish": "2025-06-28" },
+                  { "name": "False Ceiling Installation", "start": "2025-06-17", "finish": "2025-06-23" },
+                  { "name": "Sanitary items Installation", "start": "2025-06-24", "finish": "2025-06-28" }
+                ]
+              },
+              {
+                "name": "Electrical",
+                "children": [
+                  { "name": "Cable tray/trunking Installation with cover", "start": "2025-06-04", "finish": "2025-06-11" },
+                  { "name": "Cable Pulling & Dressing", "start": "2025-06-12", "finish": "2025-06-16" },
+                  { "name": "Cable Glanding & Termination", "start": "2025-06-17", "finish": "2025-06-18" },
+                  { "name": "Lighting Power Distribution Board (Lighting, Small Power) Installation", "start": "2025-06-19", "finish": "2025-06-23" },
+                  { "name": "Power Transformer Installation", "start": "2025-06-24", "finish": "2025-06-25" },
+                  { "name": "JB Installation", "start": "2025-06-25", "finish": "2025-06-28" },
+                  { "name": "Switch And Sockets Installation", "start": "2025-06-27", "finish": "2025-06-30" },
+                  { "name": "MCT Frame filling", "start": "2025-06-27", "finish": "2025-07-02" },
+                  { "name": "Light Installation", "start": "2025-06-28", "finish": "2025-07-01" },
+                  { "name": "Glanding And Termination", "start": "2025-07-01", "finish": "2025-07-03" },
+                  { "name": "Tagging And Labeling", "start": "2025-07-03", "finish": "2025-07-05" },
+                  { "name": "Earthing works", "start": "2025-07-05", "finish": "2025-07-10" }
+                ]
+              },
+              {
+                "name": "HVAC",
+                "children": [
+                  { "name": "HVAC Internal Duct Installation", "start": "2025-05-28", "finish": "2025-06-03" },
+                  { "name": "Motorized Fire Damper Installation", "start": "2025-06-04", "finish": "2025-06-13" },
+                  { "name": "HVAC Unit Installation", "start": "2025-06-27", "finish": "2025-07-10" },
+                  { "name": "Volume Control Damper Installation", "start": "2025-06-04", "finish": "2025-06-11" },
+                  { "name": "Blast Damper Installation", "start": "2025-06-12", "finish": "2025-06-16" },
+                  { "name": "Grilles/Diffusers Installation", "start": "2025-06-17", "finish": "2025-06-20" },
+                  { "name": "HVAC Instrument Installation", "start": "2025-06-30", "finish": "2025-07-01" }
+                ]
+              },
+              {
+                "name": "Fire Alam & Detection",
+                "children": [
+                  { "name": "F&G Cable tray installation", "start": "2025-06-04", "finish": "2025-06-09" },
+                  { "name": "F&G Junction Box Installation", "start": "2025-06-10", "finish": "2025-06-11" },
+                  { "name": "F&G Cable Pulling & Dressing", "start": "2025-06-24", "finish": "2025-06-28" },
+                  { "name": "F&G Glanding and Terminations", "start": "2025-06-30", "finish": "2025-07-01" },
+                  { "name": "Tagging and Labeling for F&G Cables", "start": "2025-07-02", "finish": "2025-07-04" },
+                  { "name": "F&G Detectors, Alarm Devices and accessories Installation", "start": "2025-07-05", "finish": "2025-07-08" },
+                  { "name": "Fire Extinguisher Installation", "start": "2025-07-09", "finish": "2025-07-09" },
+                  { "name": "Safety Sign Labels Installation", "start": "2025-07-10", "finish": "2025-07-10" }
+                ]
+              },
+              {
+                "name": "Telecom",
+                "children": [
+                  { "name": "Telecom Cable trunking with cover installation", "start": "2025-06-04", "finish": "2025-06-09" },
+                  { "name": "Telecom Network cabinet/ Junction Box Installation", "start": "2025-06-10", "finish": "2025-06-11" },
+                  { "name": "Telecom Cable Pulling & Dressing", "start": "2025-06-17", "finish": "2025-06-23" },
+                  { "name": "Telecom Glanding and Terminations", "start": "2025-06-24", "finish": "2025-06-28" },
+                  { "name": "Tagging and Labeling for Telecom Cables", "start": "2025-06-30", "finish": "2025-07-01" },
+                  { "name": "Installation of Telecom Switch & Socket", "start": "2025-07-02", "finish": "2025-07-05" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Testing at Fabrication facility & Close Out",
+        "children": [
+          {
+            "name": "Factory Acceptance Tests",
+            "children": [
+              { "name": "FAT and Punch list Closing", "start": "2025-07-11", "finish": "2025-07-12" }
+            ]
+          },
+          {
+            "name": "Delivery",
+            "children": [
+              {
+                "name": "Supply of Building",
+                "children": [
+                  { "name": "Packing & Readiness for Delivery", "start": "2025-07-14", "finish": "2025-07-17" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+  
