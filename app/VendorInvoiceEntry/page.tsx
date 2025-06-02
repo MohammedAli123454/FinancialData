@@ -91,6 +91,7 @@ export default function VendorInvoiceEntry() {
   const [showForm, setShowForm] = useState(false);
   const [editInvoiceData, setEditInvoiceData] = useState<any>(null);
   const [viewInvoice, setViewInvoice] = useState<any>(null);
+  const [isInvoiceLoading, setIsInvoiceLoading] = useState(false);
 
   // Queries
   const { data: suppliers, isLoading: isSuppliersLoading } = useQuery({
@@ -217,6 +218,17 @@ export default function VendorInvoiceEntry() {
     mutation.mutate(payload);
   }
 
+  // Handle viewing an invoice: sets loading, then shows after a short delay.
+  function handleView(invoice: any) {
+    setIsInvoiceLoading(true);
+    setViewInvoice(null);
+    // Simulate async fetch; replace with real fetch if needed
+    setTimeout(() => {
+      setViewInvoice(invoice);
+      setIsInvoiceLoading(false);
+    }, 400); // 400ms delay for demo; use fetch here if fetching from server
+  }
+
   return (
     <div className="p-6 bg-white shadow rounded mb-8">
       <ToastContainer />
@@ -275,17 +287,20 @@ export default function VendorInvoiceEntry() {
             isInvoicesLoading={isInvoicesLoading}
             onEdit={onEdit}
             onDelete={onDelete}
-            onView={setViewInvoice} // <-- here
+            onView={handleView} // <-- Show loader, then dialog
           />
         </>
       )}
 
-<InvoiceViewDialog
-        open={!!viewInvoice}
-        onClose={() => setViewInvoice(null)}
+      <InvoiceViewDialog
+        open={!!viewInvoice || isInvoiceLoading}
+        onClose={() => {
+          setViewInvoice(null);
+          setIsInvoiceLoading(false);
+        }}
         invoice={viewInvoice}
+        loading={isInvoiceLoading}
       />
-
     </div>
   );
 }
