@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 interface CalendarFieldProps {
   label: string;
   value: Date | undefined | null;
-  onChange: (date: Date | undefined) => void;
+  onChange: (date: Date | undefined) => void; 
   error?: string;
   disabled?: boolean;
   placeholder?: string;
@@ -42,22 +42,23 @@ export default function CalendarField({
           disabled={disabled}
           onClick={() => !disabled && setOpen((o) => !o)}
         />
-        {open && (
-          <div className="absolute z-20 mt-1 bg-white border rounded shadow-lg">
-            <DayPicker
-              mode="single"
-              selected={value ? new Date(value) : undefined}
-              onSelect={(date) => {
-                onChange(date);
-                setOpen(false);
-              }}
-              showOutsideDays
-              captionLayout="dropdown-buttons"
-              fromYear={minYear}
-              toYear={maxYear}
-            />
-          </div>
-        )}
+       {open && (
+  <div className="absolute z-50 mt-1 bg-white border rounded shadow-lg">
+    <DayPicker
+      mode="single"
+      selected={value ? new Date(value) : undefined}
+      onSelect={(date) => {
+        onChange(date);
+        setOpen(false);
+      }}
+      showOutsideDays
+      captionLayout="dropdown-buttons"
+      fromYear={minYear}
+      toYear={maxYear}
+    />
+  </div>
+)}
+
       </div>
       {error && <div className="text-xs text-red-500 mt-1">{error}</div>}
     </div>

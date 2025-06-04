@@ -79,6 +79,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   poValue: numeric('po_value').notNull(),
   poValueWithVAT: numeric('po_value_with_vat').notNull(),
   masterPo: varchar('master_po', { length: 20 }),
+  parent_po_number: varchar("parent_po_number", { length: 20 }), // nullable by default
 });
 
 

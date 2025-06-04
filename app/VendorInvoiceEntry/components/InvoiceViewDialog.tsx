@@ -52,6 +52,8 @@ export default function InvoiceViewDialog({
     return Number(str).toLocaleString(undefined, { minimumFractionDigits: 2 });
   }
 
+  
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl w-full p-8 shadow-2xl rounded-2xl border bg-gradient-to-tr from-white via-gray-50 to-blue-50">

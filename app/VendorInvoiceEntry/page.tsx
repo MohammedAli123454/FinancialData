@@ -14,6 +14,7 @@ import CalendarField from "./components/CalendarField";
 import InvoiceTable from "./components/InvoiceTable";
 import StatementInputFields from "./components/StatementInputFields";
 import InvoiceViewDialog from "./components/InvoiceViewDialog";
+import ConfirmDeleteDialog from "./components/ConfirmDeleteDialog"; // import dialog
 
 // ---------- Validation Schema ----------
 const invoiceFormSchema = z.object({
@@ -93,6 +94,10 @@ export default function VendorInvoiceEntry() {
   const [viewInvoice, setViewInvoice] = useState<any>(null);
   const [isInvoiceLoading, setIsInvoiceLoading] = useState(false);
 
+  // --- For Confirm Delete Dialog ---
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
+
   // Queries
   const { data: suppliers, isLoading: isSuppliersLoading } = useQuery({
     queryKey: ["suppliers"],
@@ -110,7 +115,6 @@ export default function VendorInvoiceEntry() {
   });
 
   // Mutations
-  // CREATE
   const mutation = useMutation({
     mutationFn: createInvoice,
     onSuccess: () => {
@@ -122,7 +126,6 @@ export default function VendorInvoiceEntry() {
     onError: (err: any) => toast.error(err.message || "Error saving invoice"),
   });
 
-  // EDIT
   const editMutation = useMutation({
     mutationFn: editInvoice,
     onSuccess: () => {
@@ -134,7 +137,6 @@ export default function VendorInvoiceEntry() {
     onError: (err: any) => toast.error(err.message || "Error updating invoice"),
   });
 
-  // DELETE
   const deleteMutation = useMutation({
     mutationFn: deleteInvoice,
     onSuccess: () => {
@@ -164,7 +166,7 @@ export default function VendorInvoiceEntry() {
   // Set form values for editing
   function onEdit(invoice: any) {
     setEditInvoiceData(invoice);
-    setShowForm(false); // close add form if open
+    setShowForm(false);
 
     form.reset({
       ...invoice,
@@ -196,8 +198,22 @@ export default function VendorInvoiceEntry() {
   }
 
   function onDelete(invoice: any) {
-    if (window.confirm("Are you sure you want to delete this invoice?")) {
-      deleteMutation.mutate(invoice.id);
+    setInvoiceToDelete(invoice);
+    setDeleteDialogOpen(true);
+  }
+
+  function handleConfirmDelete() {
+    if (invoiceToDelete) {
+      deleteMutation.mutate(invoiceToDelete.id, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false);
+          setInvoiceToDelete(null);
+        },
+        onError: () => {
+          setDeleteDialogOpen(false);
+          setInvoiceToDelete(null);
+        },
+      });
     }
   }
 
@@ -222,11 +238,10 @@ export default function VendorInvoiceEntry() {
   function handleView(invoice: any) {
     setIsInvoiceLoading(true);
     setViewInvoice(null);
-    // Simulate async fetch; replace with real fetch if needed
     setTimeout(() => {
       setViewInvoice(invoice);
       setIsInvoiceLoading(false);
-    }, 400); // 400ms delay for demo; use fetch here if fetching from server
+    }, 400);
   }
 
   return (
@@ -248,7 +263,7 @@ export default function VendorInvoiceEntry() {
             onSubmit={form.handleSubmit(editInvoiceData ? handleEditSubmit : onSubmit)}
             className="space-y-4 border-b pb-6 mb-6"
           >
-            <StatementInputFields
+             <StatementInputFields
               suppliers={suppliers || []}
               isSuppliersLoading={isSuppliersLoading}
               poNumbers={poNumbers || []}
@@ -286,8 +301,8 @@ export default function VendorInvoiceEntry() {
             invoices={invoices || []}
             isInvoicesLoading={isInvoicesLoading}
             onEdit={onEdit}
-            onDelete={onDelete}
-            onView={handleView} // <-- Show loader, then dialog
+            onDelete={onDelete} // dialog-based delete
+            onView={handleView}
           />
         </>
       )}
@@ -300,6 +315,17 @@ export default function VendorInvoiceEntry() {
         }}
         invoice={viewInvoice}
         loading={isInvoiceLoading}
+      />
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setInvoiceToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        invoice={invoiceToDelete}
+        loading={deleteMutation.isPending}
       />
     </div>
   );
