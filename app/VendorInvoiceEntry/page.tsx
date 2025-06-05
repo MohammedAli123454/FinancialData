@@ -10,19 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Plus } from "lucide-react";
 import "react-toastify/dist/ReactToastify.css";
 import * as z from "zod";
-import CalendarField from "./components/CalendarField";
 import InvoiceTable from "./components/InvoiceTable";
 import StatementInputFields from "./components/StatementInputFields";
 import InvoiceViewDialog from "./components/InvoiceViewDialog";
-import ConfirmDeleteDialog from "./components/ConfirmDeleteDialog"; // import dialog
+import ConfirmDeleteDialog from "./components/ConfirmDeleteDialog";
 
-// ---------- Validation Schema ----------
+// ----------- Validation Schema -----------
 const invoiceFormSchema = z.object({
   invoice_no: z.string().min(1, "Invoice number is required"),
   invoice_date: z.date({ required_error: "Invoice date is required" }),
-  payment_type: z.enum(["ADVANCE PAYMENT", "ADVANCE SETTLEMENT", "CREDIT"], {
-    errorMap: () => ({ message: "Payment type is required" }),
-  }),
+  payment_type: z.enum(["ADVANCE PAYMENT", "ADVANCE SETTLEMENT", "CREDIT"])
+  .optional()
+  .refine(val => !!val, { message: "Payment type is required" }),
   payment_due_date: z.date({ required_error: "Payment due date is required" }),
   invoice_amount: z
     .string()
@@ -41,21 +40,21 @@ const invoiceFormSchema = z.object({
 });
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
-// ---------- Fetch Functions ----------
-const fetchSuppliers = async () => {
-  const res = await fetch("/api/suppliers-list");
-  if (!res.ok) throw new Error("Failed to fetch suppliers");
-  const json = await res.json();
-  return json.data;
+// ----------- Default Blank Form Values -----------
+const BLANK_INVOICE_FORM: InvoiceFormValues = {
+  invoice_no: "",
+  invoice_date: new Date(),
+  payment_type: "ADVANCE PAYMENT", 
+  payment_due_date: new Date(),
+  invoice_amount: "",
+  payable: "",
+  supplier_id: "",
+  po_number: "",
+  contract_type: "GCS Contract",
+  certified_date: undefined,
 };
 
-const fetchPONumbers = async () => {
-  const res = await fetch("/api/po-list");
-  if (!res.ok) throw new Error("Failed to fetch PO numbers");
-  const json = await res.json();
-  return json.data;
-};
-
+// ----------- Fetch and Mutation Functions -----------
 const fetchInvoices = async () => {
   const res = await fetch("/api/invoices");
   if (!res.ok) throw new Error("Failed to fetch invoices");
@@ -86,7 +85,7 @@ const deleteInvoice = async (id: number) => {
   if (!res.ok) throw new Error(await res.text());
 };
 
-// ---------- Component ----------
+// ----------- Main Component -----------
 export default function VendorInvoiceEntry() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -94,49 +93,48 @@ export default function VendorInvoiceEntry() {
   const [viewInvoice, setViewInvoice] = useState<any>(null);
   const [isInvoiceLoading, setIsInvoiceLoading] = useState(false);
 
-  // --- For Confirm Delete Dialog ---
+  // For Confirm Delete Dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
 
-  // Queries
-  const { data: suppliers, isLoading: isSuppliersLoading } = useQuery({
-    queryKey: ["suppliers"],
-    queryFn: fetchSuppliers,
+  // RHF form instance (persists for the component's lifetime)
+  const form = useForm<InvoiceFormValues>({
+    resolver: zodResolver(invoiceFormSchema),
+    defaultValues: BLANK_INVOICE_FORM,
   });
 
-  const { data: poNumbers } = useQuery({
-    queryKey: ["poNumbers"],
-    queryFn: fetchPONumbers,
-  });
-
+  // ----------- Queries and Mutations -----------
   const { data: invoices, isLoading: isInvoicesLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: fetchInvoices,
   });
 
-  // Mutations
+  // Add Invoice Mutation
   const mutation = useMutation({
     mutationFn: createInvoice,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Invoice added!");
-      form.reset();
+      form.reset(BLANK_INVOICE_FORM); // Explicitly reset to blank
       setShowForm(false);
     },
     onError: (err: any) => toast.error(err.message || "Error saving invoice"),
   });
 
+  // Edit Invoice Mutation
   const editMutation = useMutation({
     mutationFn: editInvoice,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Invoice updated!");
       setEditInvoiceData(null);
-      form.reset();
+      form.reset(BLANK_INVOICE_FORM); // Reset to blank after edit
+      setShowForm(false);
     },
     onError: (err: any) => toast.error(err.message || "Error updating invoice"),
   });
 
+  // Delete Invoice Mutation
   const deleteMutation = useMutation({
     mutationFn: deleteInvoice,
     onSuccess: () => {
@@ -146,27 +144,12 @@ export default function VendorInvoiceEntry() {
     onError: (err: any) => toast.error(err.message || "Error deleting invoice"),
   });
 
-  // Main form (for create or edit)
-  const form = useForm<InvoiceFormValues>({
-    resolver: zodResolver(invoiceFormSchema),
-    defaultValues: {
-      invoice_no: "",
-      invoice_date: new Date(),
-      payment_type: undefined,
-      payment_due_date: new Date(),
-      invoice_amount: "",
-      payable: "",
-      supplier_id: "",
-      po_number: "",
-      contract_type: "GCS Contract",
-      certified_date: undefined,
-    },
-  });
+  // ----------- Handlers -----------
 
-  // Set form values for editing
+  // Open Edit Form with Data
   function onEdit(invoice: any) {
     setEditInvoiceData(invoice);
-    setShowForm(false);
+    setShowForm(true); // Open the form for editing
 
     form.reset({
       ...invoice,
@@ -179,6 +162,7 @@ export default function VendorInvoiceEntry() {
     });
   }
 
+  // Edit Submit Handler
   function handleEditSubmit(values: InvoiceFormValues) {
     const payload = {
       ...values,
@@ -197,26 +181,7 @@ export default function VendorInvoiceEntry() {
     }
   }
 
-  function onDelete(invoice: any) {
-    setInvoiceToDelete(invoice);
-    setDeleteDialogOpen(true);
-  }
-
-  function handleConfirmDelete() {
-    if (invoiceToDelete) {
-      deleteMutation.mutate(invoiceToDelete.id, {
-        onSuccess: () => {
-          setDeleteDialogOpen(false);
-          setInvoiceToDelete(null);
-        },
-        onError: () => {
-          setDeleteDialogOpen(false);
-          setInvoiceToDelete(null);
-        },
-      });
-    }
-  }
-
+  // Add Submit Handler
   function onSubmit(values: InvoiceFormValues) {
     const payload = {
       ...values,
@@ -234,7 +199,29 @@ export default function VendorInvoiceEntry() {
     mutation.mutate(payload);
   }
 
-  // Handle viewing an invoice: sets loading, then shows after a short delay.
+  // Show Delete Dialog
+  function onDelete(invoice: any) {
+    setInvoiceToDelete(invoice);
+    setDeleteDialogOpen(true);
+  }
+
+  // Confirm Delete Handler
+  function handleConfirmDelete() {
+    if (invoiceToDelete) {
+      deleteMutation.mutate(invoiceToDelete.id, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false);
+          setInvoiceToDelete(null);
+        },
+        onError: () => {
+          setDeleteDialogOpen(false);
+          setInvoiceToDelete(null);
+        },
+      });
+    }
+  }
+
+  // Show Invoice View Dialog
   function handleView(invoice: any) {
     setIsInvoiceLoading(true);
     setViewInvoice(null);
@@ -244,38 +231,43 @@ export default function VendorInvoiceEntry() {
     }, 400);
   }
 
+  // ----------- UI Render -----------
   return (
     <div className="p-6 bg-white shadow rounded mb-8">
       <ToastContainer />
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Vendor Invoice Entry</h2>
         {!showForm && !editInvoiceData && (
-          <Button onClick={() => setShowForm(true)}>
+          <Button
+            onClick={() => {
+              // Reset to blank on Add Invoice
+              form.reset(BLANK_INVOICE_FORM);
+              setEditInvoiceData(null);
+              setShowForm(true);
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" /> Add Invoice
           </Button>
         )}
       </div>
 
-      {/* Add or Edit Form */}
+      {/* ----------- Add/Edit Form ----------- */}
       {(showForm || editInvoiceData) && (
         <FormProvider {...form}>
           <form
             onSubmit={form.handleSubmit(editInvoiceData ? handleEditSubmit : onSubmit)}
             className="space-y-4 border-b pb-6 mb-6"
           >
-             <StatementInputFields
-              suppliers={suppliers || []}
-              isSuppliersLoading={isSuppliersLoading}
-              poNumbers={poNumbers || []}
-            />
+            <StatementInputFields />
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
+                  // Cancel: Always reset to blank and hide the form
                   setShowForm(false);
                   setEditInvoiceData(null);
-                  form.reset();
+                  form.reset(BLANK_INVOICE_FORM);
                 }}
               >
                 Cancel
@@ -293,7 +285,7 @@ export default function VendorInvoiceEntry() {
         </FormProvider>
       )}
 
-      {/* Invoice Table */}
+      {/* ----------- Invoice Table ----------- */}
       {!showForm && !editInvoiceData && (
         <>
           <h3 className="text-lg font-semibold mb-2">Recent Invoices</h3>
@@ -301,12 +293,13 @@ export default function VendorInvoiceEntry() {
             invoices={invoices || []}
             isInvoicesLoading={isInvoicesLoading}
             onEdit={onEdit}
-            onDelete={onDelete} // dialog-based delete
+            onDelete={onDelete}
             onView={handleView}
           />
         </>
       )}
 
+      {/* ----------- Dialogs ----------- */}
       <InvoiceViewDialog
         open={!!viewInvoice || isInvoiceLoading}
         onClose={() => {
