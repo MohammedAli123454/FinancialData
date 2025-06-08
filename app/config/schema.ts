@@ -149,5 +149,49 @@ export const invoices = pgTable("invoices", {
 });
 
 
+
+
+// Customer
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }),
+  address: text("address"),
+  contact: varchar("contact", { length: 50 }),
+  email: varchar("email", { length: 100 }),
+});
+
+// Item (catalog)
+export const items = pgTable("items", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }),
+  description: varchar("description", { length: 200 }),
+  unit: varchar("unit", { length: 20 }),
+  price: numeric("price", { precision: 12, scale: 2 }),
+});
+
+// Invoice (header)
+export const invoices1 = pgTable("invoices1", {
+  id: serial("id").primaryKey(),
+  customer_id: integer("customer_id").references(() => customers.id),
+  invoice_date: date("invoice_date"),
+  invoice_type: varchar("invoice_type", { length: 10 }),
+  payment_terms: varchar("payment_terms", { length: 100 }),
+  invoice_term: varchar("invoice_term", { length: 50 }),
+  notes: text("notes"),
+  created_at: date("created_at"),
+});
+
+// Invoice Detail (lines)
+export const invoice_details = pgTable("invoice_details", {
+  id: serial("id").primaryKey(),
+  invoice_id: integer("invoice_id").references(() => invoices1.id), // <-- FIXED
+  item_id: integer("item_id").references(() => items.id),
+  sr_no: integer("sr_no"),
+  qty: numeric("qty", { precision: 12, scale: 2 }),
+  price: numeric("price", { precision: 12, scale: 2 }),
+  total: numeric("total", { precision: 14, scale: 2 }),
+});
+
+
 export type User = typeof users.$inferSelect;
 

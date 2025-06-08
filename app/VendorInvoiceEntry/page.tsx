@@ -1,27 +1,26 @@
 "use client";
-
-import { useForm, FormProvider } from "react-hook-form";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { format, parseISO } from "date-fns";
 import { useState } from "react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastContainer, toast } from "react-toastify";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus } from "lucide-react";
-import "react-toastify/dist/ReactToastify.css";
-import * as z from "zod";
 import InvoiceTable from "./components/InvoiceTable";
-import StatementInputFields from "./components/StatementInputFields";
 import InvoiceViewDialog from "./components/InvoiceViewDialog";
 import ConfirmDeleteDialog from "./components/ConfirmDeleteDialog";
+import StatementInputFields from "./components/StatementInputFields";
+import { FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { format, parseISO } from "date-fns";
+import "react-toastify/dist/ReactToastify.css";
 
-// ----------- Validation Schema -----------
+// ---------- Validation Schema & Types ----------
 const invoiceFormSchema = z.object({
   invoice_no: z.string().min(1, "Invoice number is required"),
   invoice_date: z.date({ required_error: "Invoice date is required" }),
   payment_type: z.enum(["ADVANCE PAYMENT", "ADVANCE SETTLEMENT", "CREDIT"])
-  .optional()
-  .refine(val => !!val, { message: "Payment type is required" }),
+    .optional()
+    .refine(val => !!val, { message: "Payment type is required" }),
   payment_due_date: z.date({ required_error: "Payment due date is required" }),
   invoice_amount: z
     .string()
@@ -33,14 +32,11 @@ const invoiceFormSchema = z.object({
     .refine(val => parseFloat(val) > 0, "Payable must be greater than 0"),
   supplier_id: z.string().min(1, "Supplier is required"),
   po_number: z.string().min(1, "PO Number is required"),
-  contract_type: z.enum(["GCS Contract"], {
-    errorMap: () => ({ message: "Contract type is required" }),
-  }),
+  contract_type: z.enum(["GCS Contract"]),
   certified_date: z.date().optional().nullable(),
 });
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
-// ----------- Default Blank Form Values -----------
 const BLANK_INVOICE_FORM: InvoiceFormValues = {
   invoice_no: "",
   invoice_date: new Date(),
@@ -54,11 +50,13 @@ const BLANK_INVOICE_FORM: InvoiceFormValues = {
   certified_date: undefined,
 };
 
-// ----------- Fetch and Mutation Functions -----------
-const fetchInvoices = async () => {
-  const res = await fetch("/api/invoices");
-  if (!res.ok) throw new Error("Failed to fetch invoices");
+// --------- API calls ----------
+const PAGE_SIZE = 20;
+
+const fetchInvoices = async ({ pageParam = 0 }) => {
+  const res = await fetch(`/api/invoices?limit=${PAGE_SIZE}&offset=${pageParam}`);
   const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Failed to fetch invoices");
   return json.data;
 };
 
@@ -71,7 +69,7 @@ const createInvoice = async (data: any) => {
   if (!res.ok) throw new Error(await res.text());
 };
 
-const editInvoice = async ({ id, data }: { id: number, data: any }) => {
+const editInvoice = async ({ id, data }: { id: number; data: any }) => {
   const res = await fetch(`/api/invoices/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -85,7 +83,7 @@ const deleteInvoice = async (id: number) => {
   if (!res.ok) throw new Error(await res.text());
 };
 
-// ----------- Main Component -----------
+// ------------- Main Component -------------
 export default function VendorInvoiceEntry() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -93,64 +91,72 @@ export default function VendorInvoiceEntry() {
   const [viewInvoice, setViewInvoice] = useState<any>(null);
   const [isInvoiceLoading, setIsInvoiceLoading] = useState(false);
 
-  // For Confirm Delete Dialog
+  // Confirm Delete Dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
 
-  // RHF form instance (persists for the component's lifetime)
+  // RHF form instance
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: BLANK_INVOICE_FORM,
   });
 
-  // ----------- Queries and Mutations -----------
-  const { data: invoices, isLoading: isInvoicesLoading } = useQuery({
-    queryKey: ["invoices"],
+  // ---------- Infinite Query ----------
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["invoices-infinite"],
     queryFn: fetchInvoices,
+    initialPageParam: 0, // <-- THIS FIXES THE ERROR!
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length < PAGE_SIZE ? undefined : allPages.length * PAGE_SIZE,
   });
+  
+  // Flatten pages for InvoiceTable
+  const invoices = data?.pages.flat() || [];
 
-  // Add Invoice Mutation
+  // ---------- Mutations ----------
   const mutation = useMutation({
     mutationFn: createInvoice,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-infinite"] });
       toast.success("Invoice added!");
-      form.reset(BLANK_INVOICE_FORM); // Explicitly reset to blank
+      form.reset(BLANK_INVOICE_FORM);
       setShowForm(false);
     },
     onError: (err: any) => toast.error(err.message || "Error saving invoice"),
   });
 
-  // Edit Invoice Mutation
   const editMutation = useMutation({
     mutationFn: editInvoice,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-infinite"] });
       toast.success("Invoice updated!");
       setEditInvoiceData(null);
-      form.reset(BLANK_INVOICE_FORM); // Reset to blank after edit
+      form.reset(BLANK_INVOICE_FORM);
       setShowForm(false);
     },
     onError: (err: any) => toast.error(err.message || "Error updating invoice"),
   });
 
-  // Delete Invoice Mutation
   const deleteMutation = useMutation({
     mutationFn: deleteInvoice,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-infinite"] });
       toast.success("Invoice deleted!");
     },
     onError: (err: any) => toast.error(err.message || "Error deleting invoice"),
   });
 
-  // ----------- Handlers -----------
-
-  // Open Edit Form with Data
+  // ---------- Handlers ----------
   function onEdit(invoice: any) {
     setEditInvoiceData(invoice);
-    setShowForm(true); // Open the form for editing
-
+    setShowForm(true);
     form.reset({
       ...invoice,
       invoice_date: invoice.invoice_date ? parseISO(invoice.invoice_date) : new Date(),
@@ -162,7 +168,6 @@ export default function VendorInvoiceEntry() {
     });
   }
 
-  // Edit Submit Handler
   function handleEditSubmit(values: InvoiceFormValues) {
     const payload = {
       ...values,
@@ -181,7 +186,6 @@ export default function VendorInvoiceEntry() {
     }
   }
 
-  // Add Submit Handler
   function onSubmit(values: InvoiceFormValues) {
     const payload = {
       ...values,
@@ -199,13 +203,11 @@ export default function VendorInvoiceEntry() {
     mutation.mutate(payload);
   }
 
-  // Show Delete Dialog
   function onDelete(invoice: any) {
     setInvoiceToDelete(invoice);
     setDeleteDialogOpen(true);
   }
 
-  // Confirm Delete Handler
   function handleConfirmDelete() {
     if (invoiceToDelete) {
       deleteMutation.mutate(invoiceToDelete.id, {
@@ -221,7 +223,6 @@ export default function VendorInvoiceEntry() {
     }
   }
 
-  // Show Invoice View Dialog
   function handleView(invoice: any) {
     setIsInvoiceLoading(true);
     setViewInvoice(null);
@@ -231,7 +232,7 @@ export default function VendorInvoiceEntry() {
     }, 400);
   }
 
-  // ----------- UI Render -----------
+  // ---------- UI ----------
   return (
     <div className="p-6 bg-white shadow rounded mb-8">
       <ToastContainer />
@@ -240,7 +241,6 @@ export default function VendorInvoiceEntry() {
         {!showForm && !editInvoiceData && (
           <Button
             onClick={() => {
-              // Reset to blank on Add Invoice
               form.reset(BLANK_INVOICE_FORM);
               setEditInvoiceData(null);
               setShowForm(true);
@@ -264,7 +264,6 @@ export default function VendorInvoiceEntry() {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  // Cancel: Always reset to blank and hide the form
                   setShowForm(false);
                   setEditInvoiceData(null);
                   form.reset(BLANK_INVOICE_FORM);
@@ -277,7 +276,7 @@ export default function VendorInvoiceEntry() {
                 disabled={mutation.isPending || editMutation.isPending}
               >
                 {(mutation.isPending || editMutation.isPending) ? (
-                  <Loader2 className="animate-spin h-4 w-4" />
+                  <span className="animate-spin h-4 w-4 mr-2 inline-block" />
                 ) : editInvoiceData ? "Update Invoice" : "Save Invoice"}
               </Button>
             </div>
@@ -290,11 +289,14 @@ export default function VendorInvoiceEntry() {
         <>
           <h3 className="text-lg font-semibold mb-2">Recent Invoices</h3>
           <InvoiceTable
-            invoices={invoices || []}
-            isInvoicesLoading={isInvoicesLoading}
+            invoices={invoices}
+            isInvoicesLoading={isLoading && !data}
             onEdit={onEdit}
             onDelete={onDelete}
             onView={handleView}
+            fetchNextPage={fetchNextPage}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
           />
         </>
       )}

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Pencil, Trash2, Eye, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,9 @@ interface InvoiceTableProps {
   onEdit: (invoice: any) => void;
   onDelete: (invoice: any) => void;
   onView: (invoice: any) => void;
+  fetchNextPage: () => void;
+  hasNextPage: boolean | undefined;
+  isFetchingNextPage: boolean;
 }
 
 export default function InvoiceTable({
@@ -19,10 +22,28 @@ export default function InvoiceTable({
   onEdit,
   onDelete,
   onView,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
 }: InvoiceTableProps) {
-  // Search states
   const [searchInvoiceNo, setSearchInvoiceNo] = useState("");
   const [searchSupplier, setSearchSupplier] = useState("");
+  const bottomRef = useRef<HTMLTableRowElement>(null);
+
+  // Optional: auto-load more when the bottom loader is visible
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 1 }
+    );
+    if (bottomRef.current) observer.observe(bottomRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Memoized filtered invoices
   const filteredInvoices = useMemo(() => {
@@ -92,44 +113,58 @@ export default function InvoiceTable({
                 </td>
               </tr>
             ) : (
-              filteredInvoices.map((inv: any, idx: number) => (
-                <tr key={inv.id} className="even:bg-white/60 hover:bg-gray-50 transition">
-                  <td className="border-b border-gray-200 px-2 py-2 w-12">{idx + 1}</td>
-                  <td className="border-b border-gray-200 px-2 py-2 w-36 truncate">{inv.invoice_no}</td>
-                  <td className="border-b border-gray-200 px-2 py-2 w-32">{inv.invoice_date}</td>
-                  <td className="border-b border-gray-200 px-2 py-2 w-40 truncate">{inv.supplier_name || inv.supplier_id}</td>
-                  <td className="border-b border-gray-200 px-2 py-2 w-28 text-right">{inv.invoice_amount}</td>
-                  <td className="border-b border-gray-200 px-2 py-2 w-32">{inv.certified_date ? inv.certified_date : "-"}</td>
-                  <td className="border-b border-gray-200 px-2 py-2 w-32 text-center">
-                    <div className="flex justify-center gap-2">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => onView(inv)}
-                        aria-label="View"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => onEdit(inv)}
-                        aria-label="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        onClick={() => onDelete(inv)}
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              <>
+                {filteredInvoices.map((inv: any, idx: number) => (
+                  <tr key={inv.id} className="even:bg-white/60 hover:bg-gray-50 transition">
+                    <td className="border-b border-gray-200 px-2 py-2 w-12">{idx + 1}</td>
+                    <td className="border-b border-gray-200 px-2 py-2 w-36 truncate">{inv.invoice_no}</td>
+                    <td className="border-b border-gray-200 px-2 py-2 w-32">{inv.invoice_date}</td>
+                    <td className="border-b border-gray-200 px-2 py-2 w-40 truncate">{inv.supplier_name || inv.supplier_id}</td>
+                    <td className="border-b border-gray-200 px-2 py-2 w-28 text-right">{inv.invoice_amount}</td>
+                    <td className="border-b border-gray-200 px-2 py-2 w-32">{inv.certified_date ? inv.certified_date : "-"}</td>
+                    <td className="border-b border-gray-200 px-2 py-2 w-32 text-center">
+                      <div className="flex justify-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => onView(inv)}
+                          aria-label="View"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => onEdit(inv)}
+                          aria-label="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          onClick={() => onDelete(inv)}
+                          aria-label="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {/* Infinite loader */}
+                {hasNextPage && (
+                  <tr ref={bottomRef}>
+                    <td colSpan={10} className="text-center py-4">
+                      {isFetchingNextPage ? (
+                        <Loader2 className="animate-spin h-6 w-6" />
+                      ) : (
+                        <Button onClick={fetchNextPage}>Load More</Button>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>

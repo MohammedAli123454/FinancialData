@@ -6,8 +6,13 @@ import { eq, desc } from "drizzle-orm";
 export const dynamic = "force-dynamic";
 
 // GET: Fetch invoices with supplier name
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    // Extract pagination params
+    const { searchParams } = new URL(req.url);
+    const limit = Number(searchParams.get("limit")) || 20;
+    const offset = Number(searchParams.get("offset")) || 0;
+
     const data = await db
       .select({
         id: invoices.id,
@@ -19,7 +24,7 @@ export async function GET() {
         invoice_amount: invoices.invoice_amount,
         payable: invoices.payable,
         supplier_id: invoices.supplier_id,
-        supplier_name: suppliers.Supplier, // Drizzle will alias as "supplier_name"
+        supplier_name: suppliers.Supplier,
         po_number: invoices.po_number,
         contract_type: invoices.contract_type,
         certified: invoices.certified,
@@ -27,9 +32,13 @@ export async function GET() {
       })
       .from(invoices)
       .leftJoin(suppliers, eq(invoices.supplier_id, suppliers.id))
-      .orderBy(desc(invoices.id));
+      .orderBy(desc(invoices.id))
+      .limit(limit)
+      .offset(offset);
 
-    // supplier_name is already top-level, no need to dig into "suppliers"
+    // Optional: Get total count for frontend if you want
+    // const [{ count }] = await db.select({ count: sql`count(*)` }).from(invoices);
+
     const formatted = data.map((inv) => ({
       ...inv,
       invoice_amount: Number(inv.invoice_amount).toLocaleString("en-US", { minimumFractionDigits: 2 }),
@@ -42,6 +51,7 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to fetch invoices", detail: String(err) }, { status: 500 });
   }
 }
+
 
 // POST: Create a new invoice
 export async function POST(req: NextRequest) {
