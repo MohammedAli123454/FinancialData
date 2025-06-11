@@ -1,0 +1,214 @@
+"use client";
+import { useState, useRef } from "react";
+import * as XLSX from "xlsx";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { useMutation } from "@tanstack/react-query";
+
+// Excel header definitions
+const EXCEL_COLUMNS = [
+  { label: "purchaseOrderId", hint: "Number (purchase_orders.id, REQUIRED)" },
+  { label: "supplierId", hint: "Number (Supplier's DB ID, REQUIRED)" },
+  { label: "lineNo", hint: "Number (1, 2, ...)" },
+  { label: "moc", hint: "Text" },
+  { label: "description", hint: "Text" },
+  { label: "unit", hint: "Text (e.g., Each, KG)" },
+  { label: "totalQty", hint: "Number" },
+  { label: "ratePerUnit", hint: "Number" },
+  { label: "totalValueSar", hint: "Number" },
+  { label: "poNumber", hint: "Text (for reference, optional)" },
+  { label: "masterPo", hint: "Text (for reference, optional)" },
+];
+
+type LineItem = {
+  purchaseOrderId: number;
+  supplierId: number;
+  lineNo: number;
+  moc: string;
+  description: string;
+  unit: string;
+  totalQty: number;
+  ratePerUnit: number;
+  totalValueSar: number;
+  poNumber?: string;
+  masterPo?: string;
+};
+
+export default function POLineItemUploadPage() {
+  const [fileName, setFileName] = useState<string>("");
+  const [records, setRecords] = useState<LineItem[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [showFormat, setShowFormat] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Upload API call
+  const mutation = useMutation({
+    mutationFn: async (data: LineItem[]) => {
+      const res = await fetch("/api/purchase-order-line-items/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      });
+      if (!res.ok) throw new Error("Failed to upload");
+      return res.json();
+    },
+    onMutate: () => setUploading(true),
+    onSuccess: () => {
+      setProgress(100);
+      setUploading(false);
+    },
+    onError: () => setUploading(false),
+  });
+
+  // Handle Excel file upload and parse
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: "array" });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json<any>(worksheet, { defval: "" });
+
+      // Map to schema
+      const mapped: LineItem[] = raw.map((r, idx) => ({
+        purchaseOrderId: Number(r.purchaseOrderId ?? r["purchaseOrderId"]),
+        supplierId: Number(r.supplierId ?? r["supplierId"]),
+        lineNo: Number(r.lineNo ?? r["lineNo"]),
+        moc: String(r.moc ?? r["moc"]).trim(),
+        description: String(r.description ?? r["description"]).trim(),
+        unit: String(r.unit ?? r["unit"]).trim(),
+        totalQty: Number(String(r.totalQty ?? r["totalQty"]).replace(/,/g, "")),
+        ratePerUnit: Number(String(r.ratePerUnit ?? r["ratePerUnit"]).replace(/,/g, "")),
+        totalValueSar: Number(String(r.totalValueSar ?? r["totalValueSar"]).replace(/,/g, "")),
+        poNumber: r.poNumber ? String(r.poNumber ?? r["poNumber"]).trim() : undefined,
+        masterPo: r.masterPo ? String(r.masterPo ?? r["masterPo"]).trim() : undefined,
+      }));
+      setRecords(mapped);
+      setProgress(0);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Download Excel Format
+  const handleDownloadFormat = () => {
+    const ws = XLSX.utils.json_to_sheet([
+      Object.fromEntries(EXCEL_COLUMNS.map((col) => [col.label, col.hint])),
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Format");
+    XLSX.writeFile(wb, "PO_Line_Item_Format.xlsx");
+  };
+
+  // Upload handler with progress
+  const handleUpload = async () => {
+    setProgress(0);
+    const batchSize = 20;
+    let uploaded = 0;
+    for (let i = 0; i < records.length; i += batchSize) {
+      const batch = records.slice(i, i + batchSize);
+      await mutation.mutateAsync(batch);
+      uploaded += batch.length;
+      setProgress(Math.min(100, Math.round((uploaded / records.length) * 100)));
+    }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto py-10">
+      <h1 className="text-2xl font-bold mb-6">Upload Purchase Order Line Items</h1>
+      <div className="flex gap-3 mb-4">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".xlsx, .xls"
+          onChange={handleFile}
+          className="block"
+        />
+        <Button
+          variant="outline"
+          type="button"
+          onClick={() => setShowFormat((v) => !v)}
+        >
+          {showFormat ? "Hide Excel File Format" : "Show Excel File Format"}
+        </Button>
+        <Button variant="secondary" type="button" onClick={handleDownloadFormat}>
+          Download Format
+        </Button>
+      </div>
+      {showFormat && (
+        <div className="border rounded-lg p-4 mb-6 bg-gray-50">
+          <h2 className="font-semibold mb-2">Excel File Format Required</h2>
+          <table className="border w-full text-xs">
+            <thead>
+              <tr>
+                {EXCEL_COLUMNS.map((col) => (
+                  <th key={col.label} className="border px-3 py-2 font-medium">
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {EXCEL_COLUMNS.map((col) => (
+                  <td key={col.label} className="border px-3 py-2 text-gray-500">
+                    {col.hint}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {records.length > 0 && (
+        <>
+          <div className="overflow-x-auto max-h-96 border rounded-lg mb-4">
+            <table className="min-w-full border text-xs">
+              <thead>
+                <tr>
+                  <th className="border px-3 py-2 w-32">Purchase Order ID</th>
+                  <th className="border px-3 py-2 w-28">Supplier ID</th>
+                  <th className="border px-3 py-2 w-20">Line No</th>
+                  <th className="border px-3 py-2 w-36">MOC</th>
+                  <th className="border px-3 py-2 w-56">Description</th>
+                  <th className="border px-3 py-2 w-20">Unit</th>
+                  <th className="border px-3 py-2 w-24 text-right">Total Qty</th>
+                  <th className="border px-3 py-2 w-28 text-right">Rate/Unit</th>
+                  <th className="border px-3 py-2 w-28 text-right">Total Value SAR</th>
+                  <th className="border px-3 py-2 w-32">PO Number</th>
+                  <th className="border px-3 py-2 w-32">Master PO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((rec, idx) => (
+                  <tr key={idx}>
+                    <td className="border px-2 py-1">{rec.purchaseOrderId}</td>
+                    <td className="border px-2 py-1">{rec.supplierId}</td>
+                    <td className="border px-2 py-1">{rec.lineNo}</td>
+                    <td className="border px-2 py-1">{rec.moc}</td>
+                    <td className="border px-2 py-1 truncate">{rec.description}</td>
+                    <td className="border px-2 py-1">{rec.unit}</td>
+                    <td className="border px-2 py-1 text-right">{rec.totalQty}</td>
+                    <td className="border px-2 py-1 text-right">{rec.ratePerUnit.toLocaleString()}</td>
+                    <td className="border px-2 py-1 text-right">{rec.totalValueSar.toLocaleString()}</td>
+                    <td className="border px-2 py-1">{rec.poNumber}</td>
+                    <td className="border px-2 py-1">{rec.masterPo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Button onClick={handleUpload} disabled={uploading} className="mb-4">
+            {uploading ? "Uploading..." : "Upload to Database"}
+          </Button>
+          <Progress value={progress} className="h-2" />
+        </>
+      )}
+    </div>
+  );
+}

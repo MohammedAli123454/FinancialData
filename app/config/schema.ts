@@ -81,6 +81,25 @@ export const purchaseOrders = pgTable('purchase_orders', {
   masterPo: varchar('master_po', { length: 20 }),
 });
 
+export const purchaseOrderLineItems = pgTable("purchase_order_line_items", {
+  id: serial("id").primaryKey(),
+  purchaseOrderId: integer("purchase_order_id").notNull().references(() => purchaseOrders.id),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id),
+  poNumber: varchar("po_number", { length: 50 }),        // For display/search, not FK
+  masterPo: varchar("master_po", { length: 20 }),        // For display/search, not FK
+  lineNo: integer("line_no").notNull(),
+  moc: varchar("moc", { length: 50 }).notNull(),
+  description: varchar("description", { length: 255 }).notNull(),
+  unit: varchar("unit", { length: 20 }).notNull(),
+  totalQty: numeric("total_qty").notNull(),
+  ratePerUnit: numeric("rate_per_unit").notNull(),
+  totalValueSar: numeric("total_value_sar").notNull(),
+  dateAdd: timestamp("date_add", { withTimezone: false }).defaultNow().notNull(),
+  dateEdit: timestamp("date_edit", { withTimezone: false }).defaultNow().notNull(),
+});
+
+
+
 
 export const currencyRates = pgTable('currency_rates', {
   currency: varchar('currency', { length: 10 }).primaryKey(),

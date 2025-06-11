@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
@@ -8,8 +8,8 @@ import { useForm, Controller } from "react-hook-form";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 
-export default function InvoiceForm({ customers, items }: { customers: any[], items: any[] }) {
-  const { control, register, handleSubmit, setValue, watch } = useForm({
+export default function InvoiceForm({ customers }: { customers: any[] }) {
+  const { control, register, handleSubmit } = useForm({
     defaultValues: {
       customer_id: "",
       invoice_date: format(new Date(), "yyyy-MM-dd"),
@@ -22,51 +22,18 @@ export default function InvoiceForm({ customers, items }: { customers: any[], it
   });
 
   const [rowData, setRowData] = useState<any[]>([
-    { sr_no: 1, item_id: "", code: "", description: "", unit: "", qty: 1, price: 0, total: 0 },
+    { sr_no: 1, item_id: "", description: "", unit: "", qty: 1, price: 0, total: 0 },
   ]);
 
   // React Select options
   const customerOptions = customers.map((c: any) => ({ value: c.id, label: c.name }));
-  const itemOptions = items.map((i: any) => ({ value: i.id, label: `${i.code} - ${i.description}` }));
 
   // AG Grid columns
   const columnDefs = useMemo(() => [
     { headerName: "Sr No", field: "sr_no", width: 70, editable: false },
-    {
-      headerName: "Item Code",
-      field: "item_id",
-      width: 220,
-      cellEditor: "agSelectCellEditor",
-      cellEditorParams: {
-        values: items.map(i => i.id.toString()),
-      },
-      valueFormatter: (params: any) => {
-        const item = items.find(i => i.id === Number(params.value));
-        return item ? item.code : "";
-      },
-      editable: true,
-      singleClickEdit: true,
-    },
-    {
-      headerName: "Description",
-      field: "description",
-      width: 200,
-      editable: false,
-      valueGetter: (params: any) => {
-        const item = items.find(i => i.id === Number(params.data.item_id));
-        return item ? item.description : "";
-      }
-    },
-    {
-      headerName: "Unit",
-      field: "unit",
-      width: 80,
-      editable: false,
-      valueGetter: (params: any) => {
-        const item = items.find(i => i.id === Number(params.data.item_id));
-        return item ? item.unit : "";
-      }
-    },
+    { headerName: "Item Code", field: "item_id", width: 120, editable: true },
+    { headerName: "Description", field: "description", width: 350, editable: true },
+    { headerName: "Unit", field: "unit", width: 80, editable: true },
     {
       headerName: "Qty",
       field: "qty",
@@ -80,16 +47,13 @@ export default function InvoiceForm({ customers, items }: { customers: any[], it
       width: 120,
       editable: true,
       valueParser: (params: any) => Number(params.newValue) || 0,
-      valueGetter: (params: any) => {
-        const item = items.find(i => i.id === Number(params.data.item_id));
-        return params.data.price || (item ? Number(item.price) : 0);
-      }
     },
     {
       headerName: "Total",
       field: "total",
       width: 120,
-      valueGetter: (params: any) => Number(params.data.qty) * Number(params.data.price),
+      valueGetter: (params: any) =>
+        Number(params.data.qty) * Number(params.data.price),
       editable: false,
     },
     {
@@ -107,22 +71,12 @@ export default function InvoiceForm({ customers, items }: { customers: any[], it
             X
           </Button>
         ) : null,
-    }
-  ], [items, rowData]);
+    },
+  ], [rowData]);
 
   // Handle cell edits
   function onCellValueChanged(params: any) {
-    const data = params.data;
-    if (params.colDef.field === "item_id") {
-      const item = items.find(i => i.id === Number(data.item_id));
-      if (item) {
-        data.code = item.code;
-        data.description = item.description;
-        data.unit = item.unit;
-        data.price = Number(item.price);
-      }
-    }
-    data.total = Number(data.qty) * Number(data.price);
+    params.data.total = Number(params.data.qty) * Number(params.data.price);
     setRowData([...rowData]);
   }
 
@@ -136,7 +90,9 @@ export default function InvoiceForm({ customers, items }: { customers: any[], it
 
   // Delete row
   function handleDeleteRow(idx: number) {
-    const newRows = rowData.filter((_, i) => i !== idx).map((row, i) => ({ ...row, sr_no: i + 1 }));
+    const newRows = rowData
+      .filter((_, i) => i !== idx)
+      .map((row, i) => ({ ...row, sr_no: i + 1 }));
     setRowData(newRows);
   }
 
@@ -148,12 +104,11 @@ export default function InvoiceForm({ customers, items }: { customers: any[], it
   async function onSubmit(formData: any) {
     formData.details = rowData.map(row => ({
       ...row,
-      item_id: Number(row.item_id),
+      item_id: row.item_id,
       qty: Number(row.qty),
       price: Number(row.price),
       total: Number(row.qty) * Number(row.price),
     }));
-    // Call your API route to save the invoice
     const res = await fetch("/api/invoices1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -161,7 +116,6 @@ export default function InvoiceForm({ customers, items }: { customers: any[], it
     });
     if (res.ok) {
       alert("Invoice saved!");
-      // Reset logic here if needed
     }
   }
 
