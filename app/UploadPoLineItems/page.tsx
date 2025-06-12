@@ -5,24 +5,26 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
 
-// Excel header definitions
+// Define the expected Excel columns, with sample and hints for download format
 const EXCEL_COLUMNS = [
-  { label: "purchaseOrderId", hint: "Number (purchase_orders.id, REQUIRED)" },
-  { label: "supplierId", hint: "Number (Supplier's DB ID, REQUIRED)" },
+  { label: "purchaseOrderId", hint: "Number (REQUIRED, purchase_orders.id)" },
+  { label: "supplierId", hint: "Number (REQUIRED, Supplier's DB ID)" },
+  { label: "poNumber", hint: "Text (for reference, optional)" },
+  { label: "masterPo", hint: "Text (for reference, optional)" },
   { label: "lineNo", hint: "Number (1, 2, ...)" },
-  { label: "moc", hint: "Text" },
+  { label: "MOC", hint: "Text" },
   { label: "description", hint: "Text" },
-  { label: "unit", hint: "Text (e.g., Each, KG)" },
+  { label: "Unit", hint: "Text (e.g., Each, KG)" },
   { label: "totalQty", hint: "Number" },
   { label: "ratePerUnit", hint: "Number" },
   { label: "totalValueSar", hint: "Number" },
-  { label: "poNumber", hint: "Text (for reference, optional)" },
-  { label: "masterPo", hint: "Text (for reference, optional)" },
 ];
 
 type LineItem = {
   purchaseOrderId: number;
   supplierId: number;
+  poNumber?: string;
+  masterPo?: string;
   lineNo: number;
   moc: string;
   description: string;
@@ -30,38 +32,44 @@ type LineItem = {
   totalQty: number;
   ratePerUnit: number;
   totalValueSar: number;
-  poNumber?: string;
-  masterPo?: string;
 };
 
 export default function POLineItemUploadPage() {
-  const [fileName, setFileName] = useState<string>("");
+  const [fileName, setFileName] = useState("");
   const [records, setRecords] = useState<LineItem[]>([]);
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Upload API call
+  // Mutation for batch upload
   const mutation = useMutation({
     mutationFn: async (data: LineItem[]) => {
-      const res = await fetch("/api/purchase-order-line-items/upload", {
+      const res = await fetch("/api/polineitems-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data }),
       });
-      if (!res.ok) throw new Error("Failed to upload");
+      if (!res.ok) {
+        const errMsg = await res.text();
+        throw new Error(errMsg || "Failed to upload");
+      }
       return res.json();
     },
     onMutate: () => setUploading(true),
+    // No alert here
     onSuccess: () => {
-      setProgress(100);
       setUploading(false);
     },
-    onError: () => setUploading(false),
+    onError: (err: any) => {
+      setUploading(false);
+      alert("Upload failed: " + (err?.message || err));
+    },
   });
+  
+  
 
-  // Handle Excel file upload and parse
+  // Parse Excel file, clean headers, and map data robustly
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -74,27 +82,69 @@ export default function POLineItemUploadPage() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json<any>(worksheet, { defval: "" });
 
-      // Map to schema
-      const mapped: LineItem[] = raw.map((r, idx) => ({
-        purchaseOrderId: Number(r.purchaseOrderId ?? r["purchaseOrderId"]),
-        supplierId: Number(r.supplierId ?? r["supplierId"]),
-        lineNo: Number(r.lineNo ?? r["lineNo"]),
-        moc: String(r.moc ?? r["moc"]).trim(),
-        description: String(r.description ?? r["description"]).trim(),
-        unit: String(r.unit ?? r["unit"]).trim(),
-        totalQty: Number(String(r.totalQty ?? r["totalQty"]).replace(/,/g, "")),
-        ratePerUnit: Number(String(r.ratePerUnit ?? r["ratePerUnit"]).replace(/,/g, "")),
-        totalValueSar: Number(String(r.totalValueSar ?? r["totalValueSar"]).replace(/,/g, "")),
-        poNumber: r.poNumber ? String(r.poNumber ?? r["poNumber"]).trim() : undefined,
-        masterPo: r.masterPo ? String(r.masterPo ?? r["masterPo"]).trim() : undefined,
+      // Extract normalized headers
+      const headers = Object.keys(raw[0] || {}).map((k) =>
+        k.trim().toLowerCase()
+      );
+
+      // Build a map of normalized header to original header
+      const headerMap: Record<string, string> = {};
+      Object.keys(raw[0] || {}).forEach((k) => {
+        headerMap[k.trim().toLowerCase()] = k;
+      });
+
+      // Now parse each row using normalized headers
+      const mapped: LineItem[] = raw.map((r: any) => ({
+        purchaseOrderId: Number(
+          r[headerMap["purchaseorderid"]] || r["purchaseOrderId"] || r["PurchaseOrderId"] || r["purchaseOrderId"]
+        ),
+        supplierId: Number(
+          r[headerMap["supplierid"]] || r["supplierId"] || r["SupplierId"] || r["supplierId"]
+        ),
+        poNumber:
+          r[headerMap["ponumber"]] !== undefined
+            ? String(r[headerMap["ponumber"]]).trim()
+            : undefined,
+        masterPo:
+          r[headerMap["masterpo"]] !== undefined
+            ? String(r[headerMap["masterpo"]]).trim()
+            : undefined,
+        lineNo: Number(r[headerMap["lineno"]] ?? r["lineNo"] ?? r["LineNo"] ?? 1),
+        moc: String(
+          r[headerMap["moc"]] ?? r["MOC"] ?? r["moc"] ?? ""
+        ).trim(),
+        description: String(
+          r[headerMap["description"]] ?? r["description"] ?? r["Description"] ?? ""
+        ).trim(),
+        unit: String(
+          r[headerMap["unit"]] ?? r["Unit"] ?? r["unit"] ?? ""
+        ).trim(),
+        totalQty: Number(
+          String(r[headerMap["totalqty"]] ?? r["totalQty"] ?? r["TotalQty"] ?? "0")
+            .replace(/,/g, "")
+        ),
+        ratePerUnit: Number(
+          String(
+            r[headerMap["rateperunit"]] ?? r["ratePerUnit"] ?? r["RatePerUnit"] ?? "0"
+          ).replace(/,/g, "")
+        ),
+        totalValueSar: Number(
+          String(
+            r[headerMap["totalvaluesar"]] ??
+              r["totalValueSar"] ??
+              r["TotalValueSar"] ??
+              "0"
+          ).replace(/,/g, "")
+        ),
       }));
+
       setRecords(mapped);
       setProgress(0);
     };
     reader.readAsArrayBuffer(file);
   };
 
-  // Download Excel Format
+  // Download sample Excel format
   const handleDownloadFormat = () => {
     const ws = XLSX.utils.json_to_sheet([
       Object.fromEntries(EXCEL_COLUMNS.map((col) => [col.label, col.hint])),
@@ -104,7 +154,7 @@ export default function POLineItemUploadPage() {
     XLSX.writeFile(wb, "PO_Line_Item_Format.xlsx");
   };
 
-  // Upload handler with progress
+  // Batch upload with progress bar
   const handleUpload = async () => {
     setProgress(0);
     const batchSize = 20;
@@ -115,7 +165,10 @@ export default function POLineItemUploadPage() {
       uploaded += batch.length;
       setProgress(Math.min(100, Math.round((uploaded / records.length) * 100)));
     }
+    // Alert only after ALL batches finish
+    alert("Upload successful!");
   };
+  
 
   return (
     <div className="max-w-5xl mx-auto py-10">
@@ -139,6 +192,7 @@ export default function POLineItemUploadPage() {
           Download Format
         </Button>
       </div>
+
       {showFormat && (
         <div className="border rounded-lg p-4 mb-6 bg-gray-50">
           <h2 className="font-semibold mb-2">Excel File Format Required</h2>
@@ -173,6 +227,8 @@ export default function POLineItemUploadPage() {
                 <tr>
                   <th className="border px-3 py-2 w-32">Purchase Order ID</th>
                   <th className="border px-3 py-2 w-28">Supplier ID</th>
+                  <th className="border px-3 py-2 w-32">PO Number</th>
+                  <th className="border px-3 py-2 w-32">Master PO</th>
                   <th className="border px-3 py-2 w-20">Line No</th>
                   <th className="border px-3 py-2 w-36">MOC</th>
                   <th className="border px-3 py-2 w-56">Description</th>
@@ -180,8 +236,6 @@ export default function POLineItemUploadPage() {
                   <th className="border px-3 py-2 w-24 text-right">Total Qty</th>
                   <th className="border px-3 py-2 w-28 text-right">Rate/Unit</th>
                   <th className="border px-3 py-2 w-28 text-right">Total Value SAR</th>
-                  <th className="border px-3 py-2 w-32">PO Number</th>
-                  <th className="border px-3 py-2 w-32">Master PO</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,6 +243,8 @@ export default function POLineItemUploadPage() {
                   <tr key={idx}>
                     <td className="border px-2 py-1">{rec.purchaseOrderId}</td>
                     <td className="border px-2 py-1">{rec.supplierId}</td>
+                    <td className="border px-2 py-1">{rec.poNumber}</td>
+                    <td className="border px-2 py-1">{rec.masterPo}</td>
                     <td className="border px-2 py-1">{rec.lineNo}</td>
                     <td className="border px-2 py-1">{rec.moc}</td>
                     <td className="border px-2 py-1 truncate">{rec.description}</td>
@@ -196,8 +252,6 @@ export default function POLineItemUploadPage() {
                     <td className="border px-2 py-1 text-right">{rec.totalQty}</td>
                     <td className="border px-2 py-1 text-right">{rec.ratePerUnit.toLocaleString()}</td>
                     <td className="border px-2 py-1 text-right">{rec.totalValueSar.toLocaleString()}</td>
-                    <td className="border px-2 py-1">{rec.poNumber}</td>
-                    <td className="border px-2 py-1">{rec.masterPo}</td>
                   </tr>
                 ))}
               </tbody>
