@@ -212,5 +212,24 @@ export const invoice_details = pgTable("invoice_details", {
 });
 
 
+// 1. item_groups table
+export const itemGroups = pgTable("item_groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+});
+
+// 2. group_items table
+export const groupItems = pgTable("group_items", {
+  id: serial("id").primaryKey(),
+  itemNo: text("item_no"), // nullable as in original structure
+  description: text("description").notNull(),
+  unit: text("unit").notNull(),
+  unitRateSar: numeric("unit_rate_sar", { precision: 12, scale: 2 }).notNull(),
+  groupId: integer("group_id")
+    .notNull()
+    .references(() => itemGroups.id, { onDelete: "cascade" }),
+});
+
+
 export type User = typeof users.$inferSelect;
 

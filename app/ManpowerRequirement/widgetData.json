@@ -1,0 +1,102 @@
+{
+    "HOT BOLTING, ISOLATION AND DISMANTLING": [
+      { "Item No.": "2.1.1.15", "Description": "FITTER", "Unit": "MH", "Unit Rate (SAR)": 34.12 },
+      { "Item No.": "2.1.1.48", "Description": "HELPER", "Unit": "MH", "Unit Rate (SAR)": 26.55 },
+      { "Item No.": null, "Description": "WPR", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": "2.1.1.4", "Description": "CRAFT FOREMAN", "Unit": "MH", "Unit Rate (SAR)": 37.92 },
+      { "Item No.": "2.1.1.12", "Description": "FIELD ENGINEER", "Unit": "MH", "Unit Rate (SAR)": 60.63 },
+      { "Item No.": null, "Description": "COLD CUTTING VENDOR", "Unit": "DAYS", "Unit Rate (SAR)": 4500.00 },
+      { "Item No.": null, "Description": "MOB DEMOB", "Unit": "EA", "Unit Rate (SAR)": 2000.00 },
+      { "Item No.": "2.2.10.1", "Description": "COMPRESSOR 350 CFM", "Unit": "HOURS", "Unit Rate (SAR)": 26.54 }
+    ],
+    "TERMINATION": [
+      { "Item No.": "2.1.1.49", "Description": "SKILLED HELPER(12 Nos)", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": null, "Description": "WPR (3 NOS)", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": "2.1.1.12", "Description": "FIELD ENGINEER", "Unit": "MH", "Unit Rate (SAR)": 60.63 },
+      { "Item No.": "2.1.1.23", "Description": "ELECTRICIAN (01 Nos)", "Unit": "MH", "Unit Rate (SAR)": 30.33 },
+      { "Item No.": "2.1.1.6", "Description": "CRAFT FOREMAN ELECTRICAL (03 Nos)", "Unit": "MH", "Unit Rate (SAR)": 37.93 },
+      { "Item No.": "2.1.1.25", "Description": "INSTRUMENT TECHNICIAN 03 NOS", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": "2.1.1.15", "Description": "FITTER (TUBE)", "Unit": "MH", "Unit Rate (SAR)": 34.12 }
+    ],
+    "PRE-COMMISSIONING": [
+      { "Item No.": "2.1.1.49", "Description": "SKILLED HELPER (12 Nos)", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": null, "Description": "WPR (3 NOS)", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": "2.1.1.12", "Description": "FIELD ENGINEER", "Unit": "MH", "Unit Rate (SAR)": 60.63 },
+      { "Item No.": "2.1.1.23", "Description": "ELECTRICIAN (01 Nos)", "Unit": "MH", "Unit Rate (SAR)": 30.33 },
+      { "Item No.": "2.1.1.6", "Description": "CRAFT FOREMAN ELECTRICAL (03 Nos)", "Unit": "MH", "Unit Rate (SAR)": 37.93 },
+      { "Item No.": "2.1.1.25", "Description": "INSTRUMENT TECHNICIAN 03 NOS", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": null, "Description": "Commissioning Vendor", "Unit": "DAYS", "Unit Rate (SAR)": 9708.75 },
+      { "Item No.": null, "Description": "MOB DEMOB", "Unit": "LS", "Unit Rate (SAR)": 10000.00 }
+    ],
+    "CABLE PULLING": [
+      { "Item No.": "2.1.1.49", "Description": "SKILLED HELPER(12 Nos)", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": null, "Description": "WPR (3 NOS)", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": "2.1.1.6", "Description": "CRAFT FOREMAN ELECTRICAL (03 Nos)", "Unit": "MH", "Unit Rate (SAR)": 37.93 }
+    ],
+    "FIELD INSTRUMENT INSTALLATION": [
+      { "Item No.": "2.1.1.49", "Description": "SKILLED HELPER(12 Nos)", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": "2.1.1.23", "Description": "ELECTRICIAN (01 Nos)", "Unit": "MH", "Unit Rate (SAR)": 30.33 },
+      { "Item No.": null, "Description": "WPR (3 NOS)", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": "2.1.1.6", "Description": "CRAFT FOREMAN ELECTRICAL (03 Nos)", "Unit": "MH", "Unit Rate (SAR)": 37.93 }
+    ],
+    "CABLE TRAY AND CONDUIT INSTALLATION": [
+      { "Item No.": "2.1.1.49", "Description": "SKILLED HELPER(12 Nos)", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": "2.1.1.23", "Description": "ELECTRICIAN (01 Nos)", "Unit": "MH", "Unit Rate (SAR)": 30.33 },
+      { "Item No.": null, "Description": "WPR (3 NOS)", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": "2.1.1.6", "Description": "CRAFT FOREMAN ELECTRICAL (03 Nos)", "Unit": "MH", "Unit Rate (SAR)": 37.93 }
+    ],
+    "STRUCTURAL": [
+      { "Item No.": "3.10.1.2", "Description": "FABRICATION AND INSTALLATION", "Unit": "TON", "Unit Rate (SAR)": 14040.00 }
+    ],
+    "PNUMETIC TEST / PRESERVATION": [
+      { "Item No.": null, "Description": "TECHNICIAN", "Unit": "MH", "Unit Rate (SAR)": 34.12 },
+      { "Item No.": "2.1.1.48", "Description": "2) HELPER DAY/NIGHT (10 EACH) 10 DAYS", "Unit": "MH", "Unit Rate (SAR)": 26.55 },
+      { "Item No.": "2.1.1.2", "Description": "PRECOM.  SUPERVISOR DAY/NIGHT (4 EACH) 10 DAYS", "Unit": "MH", "Unit Rate (SAR)": 41.75 },
+      { "Item No.": null, "Description": "4) WPR (1 EACH)", "Unit": "MH", "Unit Rate (SAR)": 35.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": "2.1.1.12", "Description": "5 FIELD ENGG (1 EACH)", "Unit": "MH", "Unit Rate (SAR)": 60.63 },
+      { "Item No.": null, "Description": "NITROGEN", "Unit": "LOT", "Unit Rate (SAR)": 25000.00 },
+      { "Item No.": null, "Description": "BOLT TOURQEING CREW", "Unit": "CREW", "Unit Rate (SAR)": 4000.00 },
+      { "Item No.": null, "Description": "MOB DEMOB", "Unit": "LS", "Unit Rate (SAR)": 2000.00 }
+    ],
+    "PAINTING/GALVANIZATION": [
+      { "Item No.": null, "Description": "GALVANIZATION", "Unit": "TON", "Unit Rate (SAR)": 4000.00 }
+    ],
+    "TOUCHUP PAINTING": [
+      { "Item No.": "2.1.1.9", "Description": "PAINTING FOREMAN", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": "2.1.1..34", "Description": "PAINTER", "Unit": "MH", "Unit Rate (SAR)": 34.11 },
+      { "Item No.": "2.1.1..33", "Description": "BLASTER", "Unit": "MH", "Unit Rate (SAR)": 26.53 },
+      { "Item No.": "2.1.1.48", "Description": "HELPER", "Unit": "MH", "Unit Rate (SAR)": 26.55 },
+      { "Item No.": null, "Description": "PAINT MATERIALS", "Unit": "LOT", "Unit Rate (SAR)": 15000.00 },
+      { "Item No.": null, "Description": "BLASTING POT WITH ASSOCIATED EQUIPMENT", "Unit": "HOURS", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": "2.2.10.1", "Description": "COMPRESSOR 350 CFM", "Unit": "HOURS", "Unit Rate (SAR)": 26.54 }
+    ],
+    "PICKLING & PASSIVATION": [
+      { "Item No.": null, "Description": "TECHNICIAN", "Unit": "MH", "Unit Rate (SAR)": 34.13 },
+      { "Item No.": "2.1.1.48", "Description": "HELPER", "Unit": "MH", "Unit Rate (SAR)": 26.55 },
+      { "Item No.": null, "Description": "WPR", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "WPR (ARAMCO)", "Unit": "MH", "Unit Rate (SAR)": 60.00 },
+      { "Item No.": null, "Description": "HSE OFFICER", "Unit": "MH", "Unit Rate (SAR)": 45.00 },
+      { "Item No.": null, "Description": "MATERIALS", "Unit": "LOT", "Unit Rate (SAR)": 5000.00 }
+    ],
+    "BOLT TOURQEING": [
+      { "Item No.": null, "Description": "BOLT TOURQEING CREW", "Unit": "DAYS", "Unit Rate (SAR)": 4500.00 }
+    ],
+    "SCAFFOLDING": [
+      { "Item No.": null, "Description": "COST OF SCAFFOLDING FOR 30 DAYS", "Unit": "M3/DAY", "Unit Rate (SAR)": 1.73 }
+    ]
+  }
+  

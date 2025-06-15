@@ -3,22 +3,6 @@ import { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
-
-// Define the expected Excel columns, with sample and hints for download format
-const EXCEL_COLUMNS = [
-  { label: "purchaseOrderId", hint: "Number (REQUIRED, purchase_orders.id)" },
-  { label: "supplierId", hint: "Number (REQUIRED, Supplier's DB ID)" },
-  { label: "poNumber", hint: "Text (for reference, optional)" },
-  { label: "masterPo", hint: "Text (for reference, optional)" },
-  { label: "lineNo", hint: "Number (1, 2, ...)" },
-  { label: "MOC", hint: "Text" },
-  { label: "description", hint: "Text" },
-  { label: "Unit", hint: "Text (e.g., Each, KG)" },
-  { label: "totalQty", hint: "Number" },
-  { label: "ratePerUnit", hint: "Number" },
-  { label: "totalValueSar", hint: "Number" },
-];
 
 type LineItem = {
   purchaseOrderId: number;
@@ -34,6 +18,29 @@ type LineItem = {
   totalValueSar: number;
 };
 
+const EXCEL_COLUMNS = [
+  { label: "purchaseOrderId", hint: "Number (REQUIRED, purchase_orders.id)" },
+  { label: "supplierId", hint: "Number (REQUIRED, Supplier's DB ID)" },
+  { label: "poNumber", hint: "Text (for reference, optional)" },
+  { label: "masterPo", hint: "Text (for reference, optional)" },
+  { label: "lineNo", hint: "Number (1, 2, ...)" },
+  { label: "MOC", hint: "Text" },
+  { label: "description", hint: "Text" },
+  { label: "Unit", hint: "Text (e.g., Each, KG)" },
+  { label: "totalQty", hint: "Number" },
+  { label: "ratePerUnit", hint: "Number" },
+  { label: "totalValueSar", hint: "Number" },
+];
+
+const getAdaptiveBatchSize = (totalRecords: number) => {
+  if (totalRecords < 100) return 10;
+  if (totalRecords < 500) return 25;
+  if (totalRecords < 2000) return 100;
+  if (totalRecords < 5000) return 250;
+  if (totalRecords < 10000) return 500;
+  return 1000;
+};
+
 export default function POLineItemUploadPage() {
   const [fileName, setFileName] = useState("");
   const [records, setRecords] = useState<LineItem[]>([]);
@@ -41,33 +48,6 @@ export default function POLineItemUploadPage() {
   const [uploading, setUploading] = useState(false);
   const [showFormat, setShowFormat] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Mutation for batch upload
-  const mutation = useMutation({
-    mutationFn: async (data: LineItem[]) => {
-      const res = await fetch("/api/polineitems-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      if (!res.ok) {
-        const errMsg = await res.text();
-        throw new Error(errMsg || "Failed to upload");
-      }
-      return res.json();
-    },
-    onMutate: () => setUploading(true),
-    // No alert here
-    onSuccess: () => {
-      setUploading(false);
-    },
-    onError: (err: any) => {
-      setUploading(false);
-      alert("Upload failed: " + (err?.message || err));
-    },
-  });
-  
-  
 
   // Parse Excel file, clean headers, and map data robustly
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,21 +134,50 @@ export default function POLineItemUploadPage() {
     XLSX.writeFile(wb, "PO_Line_Item_Format.xlsx");
   };
 
-  // Batch upload with progress bar
+  // Adaptive Batch Upload with Real Progress
   const handleUpload = async () => {
-    setProgress(0);
-    const batchSize = 20;
-    let uploaded = 0;
-    for (let i = 0; i < records.length; i += batchSize) {
-      const batch = records.slice(i, i + batchSize);
-      await mutation.mutateAsync(batch);
-      uploaded += batch.length;
-      setProgress(Math.min(100, Math.round((uploaded / records.length) * 100)));
+    if (!records.length) {
+      alert("No records to upload.");
+      return;
     }
-    // Alert only after ALL batches finish
-    alert("Upload successful!");
+    setUploading(true);
+    setProgress(0);
+
+    const total = records.length;
+    const batchSize = getAdaptiveBatchSize(total);
+    let uploaded = 0;
+
+    try {
+      for (let i = 0; i < total; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+
+        const res = await fetch("/api/polineitems-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: batch }),
+        });
+
+        if (!res.ok) {
+          setUploading(false);
+          alert(`Upload failed at record ${uploaded + 1}: ${await res.text()}`);
+          return;
+        }
+
+        uploaded += batch.length;
+        setProgress(Math.min(100, Math.round((uploaded / total) * 100)));
+
+        // Optional: Smooth progress (remove or decrease for faster uploads)
+        await new Promise((r) => setTimeout(r, 80));
+      }
+
+      setUploading(false);
+      setProgress(100);
+      alert("Upload successful!");
+    } catch (error) {
+      setUploading(false);
+      alert("Upload failed: " + (error as Error).message);
+    }
   };
-  
 
   return (
     <div className="max-w-5xl mx-auto py-10">
