@@ -5,7 +5,14 @@ import Select from "react-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogHeader, DialogFooter, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogHeader,
+  DialogFooter,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Edit, Trash2, Loader2, Plus } from "lucide-react";
 
 type Group = { id: number; name: string };
@@ -45,7 +52,6 @@ export default function GroupItemsPage() {
       return res.json();
     },
   });
-  
 
   // 2. Load items for selected group
   const { data: items = [], isLoading: loadingItems } = useQuery<GroupItem[]>({
@@ -57,7 +63,6 @@ export default function GroupItemsPage() {
       return res.json();
     },
   });
-  
 
   // 3. ADD item
   const addMutation = useMutation({
@@ -73,12 +78,12 @@ export default function GroupItemsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group-items", selectedGroup?.id] });
       setItemForm({ itemNo: "", description: "", unit: "", unitRateSar: "" });
+      setEditingItem(null);
     },
     onError: (err: any) => {
       alert(err?.message || "Add failed");
     },
   });
-  
 
   // 4. EDIT item
   const editMutation = useMutation({
@@ -94,6 +99,7 @@ export default function GroupItemsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group-items", selectedGroup?.id] });
       setEditingItem(null);
+      setItemForm({ itemNo: "", description: "", unit: "", unitRateSar: "" }); // Clear form after update
     },
     onError: (err: any) => {
       alert(err?.message || "Edit failed");
@@ -127,7 +133,6 @@ export default function GroupItemsPage() {
   return (
     <Card className="rounded-xl w-full h-full min-h-screen min-w-full border-none shadow-none p-0 bg-white flex flex-col">
       <CardContent className="flex-1 flex flex-col justify-start p-0">
-
         {/* Group Select */}
         <div className="sticky top-0 z-20 bg-white border-b px-20 py-5 flex flex-col gap-4 rounded-t-xl shadow-sm">
           <h2 className="text-2xl font-bold tracking-tight">Group Items</h2>
@@ -140,6 +145,8 @@ export default function GroupItemsPage() {
               onChange={(option) => {
                 const group = groups.find((g) => g.id === option?.value);
                 setSelectedGroup(group || null);
+                setItemForm({ itemNo: "", description: "", unit: "", unitRateSar: "" });
+                setEditingItem(null);
               }}
               classNamePrefix="react-select"
             />
@@ -200,7 +207,7 @@ export default function GroupItemsPage() {
                 <Button
                   type="submit"
                   size="sm"
-                  className="flex gap-2 items-center px-4 py-2"
+                  className="flex gap-2 items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
                   disabled={
                     addMutation.isPending ||
                     editMutation.isPending ||
@@ -246,36 +253,36 @@ export default function GroupItemsPage() {
             <table className="w-full text-base rounded-xl overflow-hidden shadow-sm bg-white">
               <thead>
                 <tr className="bg-muted">
-                  <th className="py-3 px-4 text-left w-8">#</th>
-                  <th className="py-3 px-4 text-left">Item No</th>
-                  <th className="py-3 px-4 text-left">Description</th>
-                  <th className="py-3 px-4 text-left">Unit</th>
-                  <th className="py-3 px-4 text-left">Unit Rate (SAR)</th>
-                  <th className="py-3 px-4 w-24">Actions</th>
+                  <th className="py-2 px-4 text-left w-8">#</th>
+                  <th className="py-2 px-4 text-left">Item No</th>
+                  <th className="py-2 px-4 text-left">Description</th>
+                  <th className="py-2 px-4 text-left">Unit</th>
+                  <th className="py-2 px-4 text-left">Unit Rate (SAR)</th>
+                  <th className="py-2 px-4 w-24">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingItems ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center">
+                    <td colSpan={6} className="py-10 text-center">
                       <Loader2 className="w-7 h-7 animate-spin mx-auto text-blue-500" />
                     </td>
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
                       No items for this group
                     </td>
                   </tr>
                 ) : (
                   filteredItems.map((item, i) => (
                     <tr key={item.id} className="border-b hover:bg-muted/40 transition">
-                      <td className="py-3 px-4">{i + 1}</td>
-                      <td className="py-3 px-4">{item.itemNo}</td>
-                      <td className="py-3 px-4">{item.description}</td>
-                      <td className="py-3 px-4">{item.unit}</td>
-                      <td className="py-3 px-4">{item.unitRateSar}</td>
-                      <td className="py-3 px-4 flex gap-2 justify-end">
+                      <td className="py-1.5 px-4">{i + 1}</td>
+                      <td className="py-1.5 px-4">{item.itemNo}</td>
+                      <td className="py-1.5 px-4">{item.description}</td>
+                      <td className="py-1.5 px-4">{item.unit}</td>
+                      <td className="py-1.5 px-4">{item.unitRateSar}</td>
+                      <td className="py-1.5 px-4 flex gap-2 justify-end">
                         <Button
                           size="icon"
                           variant="ghost"

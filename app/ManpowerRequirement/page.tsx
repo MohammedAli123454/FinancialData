@@ -1,49 +1,62 @@
 "use client";
 import { useState } from "react";
-import * as XLSX from "xlsx";
-import widgetData from "./widgetData.json";
+import { useQuery } from "@tanstack/react-query";
 import { WidgetCard } from "./WidgetCard";
 import { WidgetDialog } from "./WidgetDialog";
-import { WidgetEntry, WidgetData } from "./types";
+import { Group, Item, WidgetEntry } from "./types";
+import * as XLSX from "xlsx";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableCell, TableBody } from "@/components/ui/table";
+import { BarLoader } from "react-spinners";
 
-// Excel helpers (used ONLY in export)
 function getNosXHrsXDays(entry: any): string {
-  if (
-    entry &&
-    typeof entry.persons !== "undefined" &&
-    typeof entry.days !== "undefined"
-  ) {
+  if (entry && typeof entry.persons !== "undefined" && typeof entry.days !== "undefined") {
     return `${entry.persons}x10x${entry.days}`;
   }
   return "";
 }
 function calculateRequiredQty(entry: any): number | "" {
-  if (
-    entry &&
-    typeof entry.persons !== "undefined" &&
-    typeof entry.days !== "undefined"
-  ) {
+  if (entry && typeof entry.persons !== "undefined" && typeof entry.days !== "undefined") {
     return Number(entry.persons) * 10 * Number(entry.days);
   }
   return "";
 }
 
 export default function Page() {
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [consolidated, setConsolidated] = useState<Record<string, WidgetEntry[]>>({});
 
-  const groups = Object.keys(widgetData as WidgetData);
+  // Fetch all groups
+  const { data: groups = [], isLoading: groupsLoading } = useQuery<Group[]>({
+    queryKey: ["item-groups"],
+    queryFn: async () => {
+      const res = await fetch("/api/item-groups");
+      if (!res.ok) throw new Error("Failed to fetch groups");
+      return res.json();
+    },
+  });
 
-  const handleOpenDialog = (group: string) => {
+  // Fetch items for selected group
+  const { data: groupItems = [], isLoading: itemsLoading } = useQuery<Item[]>({
+    queryKey: ["group-items", selectedGroup?.id],
+    queryFn: async () => {
+      if (!selectedGroup?.id) return [];
+      const url = `/api/item-groups-items/group-items?groupId=${selectedGroup.id}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch group items");
+      return res.json();
+    },
+    enabled: !!selectedGroup?.id && dialogOpen,
+  });
+
+  const handleOpenDialog = (group: Group) => {
     setSelectedGroup(group);
     setDialogOpen(true);
   };
 
-  const handleFinish = (group: string, entries: WidgetEntry[]) => {
-    setConsolidated((prev) => ({ ...prev, [group]: entries }));
+  const handleFinish = (groupId: number, groupName: string, entries: WidgetEntry[]) => {
+    setConsolidated(prev => ({ ...prev, [groupName]: entries }));
     setDialogOpen(false);
     setSelectedGroup(null);
   };
@@ -56,22 +69,16 @@ export default function Page() {
       key: `${group}-${i}`,
     }))
   );
+  // Grand total of all rows
+  const mainGrandTotal = consolidatedRows.reduce((sum, row) => sum + (Number(row?.totalValue) ?? 0), 0);
 
-  // Grand total of all rows (for main summary)
-  const mainGrandTotal = consolidatedRows.reduce(
-    (sum, row) => sum + (row?.totalValue ?? 0),
-    0
-  );
-
-  // ----------- Export to Excel (with only Excel data logic changed) --------------
+  // Export to Excel
   const exportToExcel = () => {
-    // 1. Group by "group" (section heading)
     const grouped = consolidatedRows.reduce((acc, row) => {
       (acc[row.group] = acc[row.group] || []).push(row);
       return acc;
     }, {} as Record<string, typeof consolidatedRows>);
 
-    // 2. Build sheet rows: add header, then for each group: section heading + its items
     const wsData: any[] = [
       [
         "Item No.",
@@ -84,7 +91,6 @@ export default function Page() {
       ],
     ];
 
-    // Keep track of which rows are section headings for height styling
     const headingRows: number[] = [];
     let currentRow = 1;
     Object.entries(grouped).forEach(([groupName, items]) => {
@@ -93,12 +99,12 @@ export default function Page() {
       currentRow++;
       items.forEach((entry: any) => {
         wsData.push([
-          entry["Item No."],
-          entry.Description,
+          entry.itemNo,
+          entry.description,
           getNosXHrsXDays(entry),
-          entry.Unit,
+          entry.unit,
           calculateRequiredQty(entry),
-          entry["Unit Rate (SAR)"],
+          entry.unitRateSar,
           entry.totalValue,
         ]);
         currentRow++;
@@ -106,7 +112,6 @@ export default function Page() {
     });
 
     const worksheet = XLSX.utils.aoa_to_sheet(wsData);
-
     worksheet["!cols"] = [
       { wch: 15 }, // Item No.
       { wch: 40 }, // Description
@@ -116,7 +121,6 @@ export default function Page() {
       { wch: 16 }, // Unit Rate (SAR)
       { wch: 18 }, // Amount (SAR)
     ];
-
     worksheet["!rows"] = wsData.map((row, idx) =>
       idx === 0 || headingRows.includes(idx) ? { hpt: 28 } : { hpt: 20 }
     );
@@ -134,39 +138,50 @@ export default function Page() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Manhours");
     XLSX.writeFile(workbook, "manhours_consolidated.xlsx");
   };
-  // --------------------------------------------------------------------------
 
   return (
     <div className="max-w-7xl mx-auto p-8">
       <h2 className="gradient-title text-2xl">Select Activity for Manhours Loading</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 mb-10">
-        {groups.map((group) => (
-          <WidgetCard
-            key={group}
-            title={group}
-            selected={selectedGroup === group && dialogOpen}
-            onClick={() => handleOpenDialog(group)}
-          />
-        ))}
+        {groupsLoading ? (
+          <div>Loading...</div>
+        ) : (
+          groups.map(group => (
+            <WidgetCard
+              key={group.id}
+              title={group.name}
+              selected={selectedGroup?.id === group.id && dialogOpen}
+              onClick={() => handleOpenDialog(group)}
+            />
+          ))
+        )}
       </div>
+      {/* Dialog & Loader */}
+      {selectedGroup && dialogOpen && (
+        itemsLoading ? (
+          <div className="fixed inset-0 flex items-center justify-center z-[999] bg-black/20">
+            <div className="bg-white rounded-lg shadow-lg px-0 py-8 flex flex-col items-stretch gap-4 w-full max-w-2xl">
+              <div className="w-full px-8">
+                <BarLoader color="#2563eb" height={6} width="100%" />
+              </div>
+              <div className="text-blue-700 text-lg font-medium pt-2 text-center w-full">Loading items…</div>
+            </div>
+          </div>
 
-      {/* WidgetDialog */}
-      {selectedGroup && (
-        <WidgetDialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) setSelectedGroup(null);
-          }}
-          groupName={selectedGroup}
-          items={(widgetData as WidgetData)[selectedGroup]}
-          onFinish={(entries) => handleFinish(selectedGroup, entries)}
-        />
+        ) : (
+          <WidgetDialog
+            open={dialogOpen}
+            onOpenChange={open => {
+              setDialogOpen(open);
+              if (!open) setSelectedGroup(null);
+            }}
+            groupName={selectedGroup.name}
+            items={groupItems}
+            onFinish={entries => handleFinish(selectedGroup.id, selectedGroup.name, entries)}
+          />
+        )
       )}
-
       <h2 className="text-xl font-semibold mt-10 mb-4">Consolidated Entries</h2>
-
-      {/* Export Button */}
       <div className="flex justify-end mb-4">
         <button
           onClick={exportToExcel}
@@ -175,7 +190,6 @@ export default function Page() {
           Export to Excel
         </button>
       </div>
-
       <Card>
         <CardHeader>
           <CardTitle>
@@ -213,17 +227,17 @@ export default function Page() {
                   </TableCell>
                 </TableRow>
               ) : (
-                consolidatedRows.map((entry) => (
+                consolidatedRows.map(entry => (
                   <TableRow key={entry.key}>
                     <TableCell>{entry.group}</TableCell>
-                    <TableCell>{entry["Item No."]}</TableCell>
-                    <TableCell>{entry.Description}</TableCell>
-                    <TableCell>{entry.Unit}</TableCell>
-                    <TableCell>{entry["Unit Rate (SAR)"].toFixed(2)}</TableCell>
+                    <TableCell>{entry.itemNo}</TableCell>
+                    <TableCell>{entry.description}</TableCell>
+                    <TableCell>{entry.unit}</TableCell>
+                    <TableCell>{Number(entry.unitRateSar).toFixed(2)}</TableCell>
                     <TableCell>{entry.days}</TableCell>
                     <TableCell>{entry.persons}</TableCell>
                     <TableCell>{entry.totalHours}</TableCell>
-                    <TableCell>{entry.totalValue.toFixed(2)}</TableCell>
+                    <TableCell>{Number(entry.totalValue).toFixed(2)}</TableCell>
                   </TableRow>
                 ))
               )}
